@@ -10,3 +10,5 @@ reports/runs/*/paths/
 reports/runs/*/trades/
 reports/runs/*/monthly/
 *.log
+.local/
+data/telemetry/

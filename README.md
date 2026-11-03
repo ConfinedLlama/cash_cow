@@ -9,6 +9,8 @@ The latest completed work is **v3/v3b intraday research**: eight paper-based var
 - [Prepared multi-year specification — not yet run](configs/experiment_v4.json)
 - Completed pilot pointers: [v3](reports/LATEST_V3.txt), [v3b follow-up](reports/LATEST_V3B.txt)
 
+Daily maintenance is scheduled for 08:00 Asia/Singapore through December 31, 2026. It targets 3–6 meaningful commits and a daily report, subject to evidence, passing checks and local availability. See [the daily workflow](docs/DAILY_WORKFLOW.md) and [daily reports](reports/daily). This is a research/engineering schedule, not an active trading system.
+
 The prior **v2** experiment evaluates **12 higher-risk daily paper adaptations × 10 scenarios**, seven benchmarks and 19 earlier-period diagnostics. Its best base-case candidate compounded at 2.98% monthly in 2016–2024, with a 66.27% maximum drawdown. These are retrospective results, not expected live returns. Each simulation starts with its own research account.
 
 - [V2 results and research decision](docs/DECISION_V2.md)
@@ -43,7 +45,7 @@ python3 -m venv .venv
 .venv/bin/python -m cash_cow.run --fetch --label v1
 ```
 
-Downloads use unofficial Yahoo Finance data via yfinance for personal research. Cached raw data, detailed paths and trade logs remain local and are excluded from Git; aggregate summaries, manifests, reports and charts are reviewable. No keys or broker credentials are required. Omit `--fetch` to reuse a validated local cache. Failed or interrupted runs may leave an incomplete directory; `LATEST.txt` (v1) and `LATEST_V2.txt` point only to completed runs.
+Daily-bar downloads use unofficial Yahoo Finance data via yfinance for personal research; the intraday pilot uses a licensed HistoricalData.net sample. These sources need no credentials. The prepared multi-year Alpaca download requires local data API keys. Cached raw data, detailed paths, trade logs and private session telemetry remain local and are excluded from Git; aggregate summaries, manifests, reports and charts are reviewable. Omit `--fetch` to reuse a validated local cache. Failed or interrupted runs may leave an incomplete directory; completed run pointers are updated only on success.
 
 ## Research boundaries
 
