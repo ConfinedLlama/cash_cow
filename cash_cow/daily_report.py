@@ -91,6 +91,7 @@ def load_performance(path: Path, report_day: date) -> dict:
         "last_session_return": returns[-1], "observed_return": equity[-1] / equity[0] - 1,
         "observed_net_pnl": equity[-1] - equity[0], "session_close_drawdown": drawdown,
         "fees_already_in_nav": fees, "observed_monthly_returns": monthly,
+        "cost_basis": data.get("cost_basis"),
     }
 
 
@@ -140,9 +141,11 @@ def render_report(root: Path, day: date, performance: dict | None = None) -> str
                   f"- Observed compounded return: {p['observed_return']:.3%}",
                   f"- Observed net P&L: {p['observed_net_pnl']:.2f} account currency units",
                   f"- Session-close drawdown: {p['session_close_drawdown']:.3%} (not intraday drawdown)",
-                  f"- Fees already deducted from NAV: {p['fees_already_in_nav']:.2f}", "",
+                  f"- {'Modeled costs' if p.get('cost_basis') else 'Fees'} already deducted from NAV: {p['fees_already_in_nav']:.2f}", "",
                   "Observed monthly segments below may be partial; they are not estimates of full-month returns or a monthly performance average.", ""]
         lines += [f"- {month}: {value:.3%}" for month, value in p["observed_monthly_returns"].items()]
+        if p.get("cost_basis"):
+            lines += ["", f"Cost basis supplied with telemetry: {p['cost_basis']}"]
         lines += ["", "Input consistency was checked, but broker reconciliation and source authenticity must be verified separately."]
     lines += ["", "## Historical research status", "", *research_status(root), "",
               "Recorded historical checks are not fresh reruns or evidence of a live trading edge.", "",

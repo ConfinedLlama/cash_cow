@@ -1,0 +1,19 @@
+{
+  "version": "paper_orb30_v1",
+  "mode": "paper",
+  "symbol": "SPY",
+  "feed": "iex",
+  "capital": 2000.0,
+  "allocation": 0.95,
+  "daily_loss_limit": 40.0,
+  "total_loss_limit": 100.0,
+  "max_spread_bps": 10.0,
+  "max_quote_age_seconds": 60,
+  "max_bar_age_seconds": 120,
+  "entry_limit_buffer_bps": 2.0,
+  "entry_timeout_seconds": 60,
+  "flatten_minutes_before_close": 10,
+  "entry_cutoff_minutes_before_close": 60,
+  "poll_seconds": 15,
+  "end_date": "2026-12-31"
+}

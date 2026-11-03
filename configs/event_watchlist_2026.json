@@ -1,0 +1,17 @@
+{
+  "checked_at": "2026-11-03",
+  "purpose": "Research calendar only; not an automatic trade trigger or complete risk calendar",
+  "timezone": "America/New_York",
+  "requires_reverification": true,
+  "events": [
+    {"date": "2026-11-03", "time": "10:00", "name": "BLS JOLTS", "source": "https://www.bls.gov/schedule/2026/11_sched.htm"},
+    {"date": "2026-11-06", "time": "08:30", "name": "BLS Employment Situation", "source": "https://www.bls.gov/schedule/2026/11_sched.htm"},
+    {"date": "2026-11-10", "time": "08:30", "name": "BLS CPI", "source": "https://www.bls.gov/schedule/2026/11_sched.htm"},
+    {"date": "2026-11-13", "time": "08:30", "name": "BLS PPI", "source": "https://www.bls.gov/schedule/2026/11_sched.htm"},
+    {"date": "2026-12-01", "time": "10:00", "name": "BLS JOLTS", "source": "https://www.bls.gov/schedule/2026/12_sched.htm"},
+    {"date": "2026-12-04", "time": "08:30", "name": "BLS Employment Situation", "source": "https://www.bls.gov/schedule/2026/12_sched.htm"},
+    {"date": "2026-12-08", "end_date": "2026-12-09", "time": null, "name": "FOMC meeting; verify release time separately", "source": "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm"},
+    {"date": "2026-12-10", "time": "08:30", "name": "BLS CPI", "source": "https://www.bls.gov/schedule/2026/12_sched.htm"},
+    {"date": "2026-12-15", "time": "08:30", "name": "BLS PPI", "source": "https://www.bls.gov/schedule/2026/12_sched.htm"}
+  ]
+}

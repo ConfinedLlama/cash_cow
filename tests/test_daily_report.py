@@ -58,6 +58,11 @@ def test_source_hash_changes_with_evidence(tmp_path, observations):
     assert load(tmp_path, changed)["sha256"] != original["sha256"]
 
 
+def test_model_cost_basis_is_preserved(tmp_path, observations):
+    observations["cost_basis"] = "Modeled commissions and slippage; not broker fees"
+    assert load(tmp_path, observations)["cost_basis"] == observations["cost_basis"]
+
+
 def test_git_day_uses_singapore_committer_date(tmp_path):
     import os
     subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
