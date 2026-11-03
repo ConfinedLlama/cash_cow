@@ -1,5 +1,14 @@
 # Research trial registry
 
+## paper_orb30_v1 — prospective registration, 3 November 2026
+
+- User authorized a continuously running Alpaca paper trial, later adding quantitative plus qualitative/news research. Registered before any paper fills or strategy outcomes. This is a new engineering baseline, not a v3/v4 winner or a claim of positive edge.
+- SPY, free IEX observations, opening 30-minute range with completed five-minute close/VWAP confirmation; one long entry attempt per session from 10:05 until the last hour, whole shares, USD 2,000 sleeve, 95% maximum allocation. No shorts or borrowing. Exact rules and safety deviations are in `configs/paper_v1.json` and `docs/PAPER_RUNNER.md`.
+- Prospective current-session observations begin when activated; older post-2024 historical prices remain reserved. No retrospective warm-up history is requested by this candidate. Short sessions have no entries; missing/stale data and monitoring gaps prevent new exposure.
+- Performance must distinguish Alpaca simulated fills from a separate cost stress of max($0.40, $0.0035/share) plus 2bp per filled order. Account size, simulated fill rules, IEX feed and polling limitations remain visible. Cash is a zero-return baseline over the same observed periods; do not imply financing yield. Full-month comparisons require an exchange-session coverage audit.
+- Freeze strategy/config through an initial 20 observed sessions unless a correctness/safety issue requires a halt. Assess reconciliation, attendance, rejects, costs and drawdown first. This window is not statistical validation. Retain losses, failed fills, no-trade sessions and outages.
+- News collector preserves first-seen timestamps and article revisions separately; initial news/event context has no trading effect. A news-informed strategy or event blackout requires a new predeclared candidate and matched quantitative baseline. Paper fill performance cannot justify a funded deployment by itself.
+
 ## v4 — multi-year specification prepared 2 November 2026; not run
 
 - User agreed to set up Alpaca data access. All eight v3/v3b candidates are retained in `experiment_v4.json`. Read-only SIP retrieval and validation are prepared, but no authenticated download or multi-year result is claimed until files pass checks.

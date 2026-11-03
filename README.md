@@ -1,6 +1,8 @@
 # cash_cow
 
-Research workspace for US-market strategies on a small Singapore-based account. **Historical screening only; no broker connection, background paper runner, live orders or approved trading strategy.**
+Research workspace for US-market strategies on a small Singapore-based account. **Historical screening plus a paper-only Alpaca runner; no funded order endpoint or approved live strategy.**
+
+The prospective runner, frozen first strategy, private performance reports, news collection and service controls are documented in [PAPER_RUNNER.md](docs/PAPER_RUNNER.md). Use `.venv/bin/python -m cash_cow.paper status` for actual current state; an installed service is not proof of a completed trading session. Paper execution is simulated, even though it observes current market data.
 
 The latest completed work is **v3/v3b intraday research**: eight paper-based variants, 236 candidate/benchmark/diagnostic runs and 63 passing tests. Real minute data covers July–December 2022, with five evaluation months. No tested run produced a 10% month. This short pilot cannot establish reliable monthly performance. The **multi-year v4 pipeline is prepared but awaiting local Alpaca keys and validated data**.
 
@@ -69,4 +71,4 @@ docs/                   research, methodology and trial history
 reports/runs/           immutable result folders
 ```
 
-Future broker integration should be a separate adapter with explicit paper-account selection, risk limits, order deduplication and reconciliation. This project currently cannot submit any order.
+The paper adapter has explicit endpoint restrictions, durable order IDs, risk limits and reconciliation. Future funded broker integration must remain separate and requires explicit deployment authorization. Never switch credentials hoping to turn the paper runner into a live runner.
