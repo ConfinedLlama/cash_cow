@@ -1,0 +1,9 @@
+{
+  "status": "passed",
+  "simulations_reconciled": 209,
+  "trade_records_reconciled": 47725,
+  "maximum_absolute_currency_error": 1.3778844731859863e-09,
+  "run_source_config_data_hashes_match": true,
+  "verifier_sha256": "69577c6b0e2b95796daa7c75d5df18bdaa5617d4b8f224ceebe61706fd31e35f",
+  "limits": "Internal accounting and provenance audit, not an independent market-data audit or proof of executable fills."
+}

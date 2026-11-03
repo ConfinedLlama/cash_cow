@@ -1,0 +1,23 @@
+{
+  "provider": "HistoricalData.net",
+  "source": "https://historicaldata.net/file/stocks_sample_2022H2.zip",
+  "retrieved_or_verified_utc": "2026-11-02T05:55:38.400066+00:00",
+  "archive_sha256": "3640e34b8de32d86a3e1fd83e68e99013e5c130f72ed3a93287a2b651b24f843",
+  "file_hashes": {
+    "day_by_symbol/SPY_day.csv": "9cb3de55e033dd9933317c316c8a8e9d6831334cf88d5ab830805585dfe77cd6",
+    "minute_by_symbol/SPY_minute.csv": "e1b52a0ccc99b3e5b3a526db68c75615984fefc86cae328c9b1a19cbf67857ef"
+  },
+  "validation": {
+    "regular_bars": 49350,
+    "sessions": 127,
+    "missing_minutes": 0,
+    "early_close_sessions": [
+      "2022-11-25"
+    ],
+    "max_daily_vs_last_minute_close_bps": 5.151098901098328,
+    "yahoo_daily_close_max_difference_bps": 0.00039956459252366017
+  },
+  "price_basis": "raw nominal OHLC, not future-adjusted adj_* columns",
+  "vwap": "minute vwap unavailable; cumulative HLC3 times volume proxy, disclosed adaptation",
+  "license": "Free sample evaluation allowed; raw data excluded from Git and redistribution"
+}

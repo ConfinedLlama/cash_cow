@@ -1,0 +1,485 @@
+{
+  "run_id": "20261102T021739Z_v2_papers",
+  "config": {
+    "version": "v2_paper_adaptations",
+    "research_date": "2026-11-01",
+    "objective": "Test higher-risk paper-inspired candidates against a 10% monthly objective, without tuning to force the result",
+    "currency": "USD",
+    "capital": 2000,
+    "capital_currency_confirmed": false,
+    "target_monthly_return": 0.1,
+    "download_start": "2006-01-01",
+    "download_end_exclusive": "2025-01-01",
+    "development_start": "2011-01-03",
+    "development_end": "2015-12-31",
+    "validation_start": "2016-01-04",
+    "validation_end": "2024-12-31",
+    "validation_status": "reused retrospective research sample; not untouched out of sample",
+    "reserved": "2025 onward price bars remain unfetched; post-window corporate-action facts may be used only to restore historical nominal units",
+    "symbols": [
+      "SPY",
+      "QQQ",
+      "BIL",
+      "QLD",
+      "TQQQ",
+      "UPRO",
+      "XLB",
+      "XLE",
+      "XLF",
+      "XLI",
+      "XLK",
+      "XLP",
+      "XLU",
+      "XLV",
+      "XLY"
+    ],
+    "sectors": [
+      "XLB",
+      "XLE",
+      "XLF",
+      "XLI",
+      "XLK",
+      "XLP",
+      "XLU",
+      "XLV",
+      "XLY"
+    ],
+    "post_window_split_factors": {
+      "QLD": 2,
+      "TQQQ": 2,
+      "XLB": 2,
+      "XLE": 2,
+      "XLK": 2,
+      "XLU": 2,
+      "XLY": 2
+    },
+    "spin_off_cash_proxies": {
+      "XLF": {
+        "2016-09-19": 4.443564
+      }
+    },
+    "spin_off_proxy_note": "XLF's vendor 1.231 split is an XLRE distribution. Model $4.443564 per original XLF share as a delayed cash receivable, conservatively taxed at 30%, not phantom XLF shares. This approximates disposal of the distributed XLRE; it does not reproduce XLRE settlement, execution or subsequent price changes.",
+    "spin_off_source": "https://www.spglobal.com/spdji/jp/documents/methodologies/methodology-enhanced-cov-call-strat-indices.pdf",
+    "post_window_split_sources": [
+      "https://www.proshares.com/press-releases/proshares-announces-etf-share-splits5",
+      "https://www.sec.gov/Archives/edgar/data/1064641/000119312526256847/d128483dncsrs.htm"
+    ],
+    "strategies": [
+      {
+        "id": "industry_mom6",
+        "family": "industry_momentum",
+        "paper": "Moskowitz and Grinblatt 1999",
+        "cadence": "monthly",
+        "lookback": 126,
+        "skip": 0,
+        "top_n": 3
+      },
+      {
+        "id": "sector_mom12_skip1",
+        "family": "relative_momentum",
+        "paper": "Jegadeesh and Titman 1993; operational 12-1 adaptation",
+        "cadence": "monthly",
+        "lookback": 252,
+        "skip": 21,
+        "top_n": 3
+      },
+      {
+        "id": "intermediate_mom12_7",
+        "family": "intermediate_momentum",
+        "paper": "Novy-Marx 2012",
+        "cadence": "monthly",
+        "lookback": 252,
+        "skip": 126,
+        "top_n": 3
+      },
+      {
+        "id": "sector_high52",
+        "family": "52_week_high",
+        "paper": "George and Hwang 2004",
+        "cadence": "monthly",
+        "lookback": 252,
+        "top_n": 3
+      },
+      {
+        "id": "sector_reversal_week",
+        "family": "short_reversal",
+        "paper": "Lehmann 1990",
+        "cadence": "weekly",
+        "lookback": 5,
+        "top_n": 3
+      },
+      {
+        "id": "sector_reversal_36m",
+        "family": "long_reversal",
+        "paper": "De Bondt and Thaler 1985",
+        "cadence": "monthly",
+        "lookback": 756,
+        "top_n": 3
+      },
+      {
+        "id": "tsmom_upro",
+        "family": "time_series_momentum",
+        "paper": "Moskowitz Ooi Pedersen 2012",
+        "cadence": "monthly",
+        "lookback": 252,
+        "underlying": "SPY",
+        "instrument": "UPRO",
+        "daily_leverage": 3
+      },
+      {
+        "id": "tsmom_tqqq",
+        "family": "time_series_momentum",
+        "paper": "Moskowitz Ooi Pedersen 2012",
+        "cadence": "monthly",
+        "lookback": 252,
+        "underlying": "QQQ",
+        "instrument": "TQQQ",
+        "daily_leverage": 3
+      },
+      {
+        "id": "trend200_tqqq",
+        "family": "tactical_trend",
+        "paper": "Faber 2007; leveraged Nasdaq adaptation",
+        "cadence": "monthly",
+        "lookback": 200,
+        "underlying": "QQQ",
+        "instrument": "TQQQ",
+        "daily_leverage": 3
+      },
+      {
+        "id": "inverse_variance_tqqq",
+        "family": "volatility_management",
+        "paper": "Moreira and Muir 2017",
+        "cadence": "monthly",
+        "vol_window": 21,
+        "reference_annual_vol": 0.3,
+        "underlying": "QQQ",
+        "instrument": "TQQQ",
+        "daily_leverage": 3
+      },
+      {
+        "id": "relative_mom_3x",
+        "family": "relative_momentum",
+        "paper": "Jegadeesh and Titman 1993; instrument adaptation",
+        "cadence": "monthly",
+        "lookback": 252,
+        "skip": 21
+      },
+      {
+        "id": "industry_mom_volscaled",
+        "family": "industry_momentum_volatility_management",
+        "paper": "Moskowitz Grinblatt 1999 and Moreira Muir 2017; hybrid adaptation",
+        "cadence": "monthly",
+        "lookback": 126,
+        "skip": 0,
+        "top_n": 3,
+        "vol_window": 63,
+        "annual_vol_target": 0.3
+      }
+    ],
+    "benchmarks": [
+      {
+        "id": "cash_v2",
+        "cadence": "once"
+      },
+      {
+        "id": "spy95_hold",
+        "cadence": "once",
+        "instrument": "SPY"
+      },
+      {
+        "id": "qqq95_hold",
+        "cadence": "once",
+        "instrument": "QQQ"
+      },
+      {
+        "id": "qld95_hold",
+        "cadence": "once",
+        "instrument": "QLD"
+      },
+      {
+        "id": "tqqq95_hold",
+        "cadence": "once",
+        "instrument": "TQQQ"
+      },
+      {
+        "id": "upro95_hold",
+        "cadence": "once",
+        "instrument": "UPRO"
+      },
+      {
+        "id": "bills95_hold",
+        "cadence": "once",
+        "instrument": "BIL"
+      }
+    ],
+    "base": {
+      "exposure_cap": 0.95,
+      "one_way_slippage_bps": 5,
+      "commission_per_order": 0.4,
+      "extra_signal_delay_sessions": 0,
+      "whole_shares": false,
+      "monthly_overhead": 0,
+      "settlement_sessions": 3,
+      "dividend_cash_delay_sessions": 30,
+      "all_dividends_withholding": false
+    },
+    "scenarios": [
+      {
+        "name": "01_base"
+      },
+      {
+        "name": "02_higher_costs",
+        "one_way_slippage_bps": 10,
+        "commission_per_order": 1.1
+      },
+      {
+        "name": "03_severe_slippage",
+        "one_way_slippage_bps": 25
+      },
+      {
+        "name": "04_delay_one",
+        "extra_signal_delay_sessions": 1
+      },
+      {
+        "name": "05_delay_three",
+        "extra_signal_delay_sessions": 3
+      },
+      {
+        "name": "06_half_capital",
+        "capital": 1000
+      },
+      {
+        "name": "07_whole_shares",
+        "whole_shares": true
+      },
+      {
+        "name": "08_monthly_overhead",
+        "monthly_overhead": 10
+      },
+      {
+        "name": "09_tax_stress",
+        "all_dividends_withholding": true
+      },
+      {
+        "name": "10_half_exposure",
+        "exposure_cap": 0.475
+      }
+    ],
+    "statistics": {
+      "bootstrap_samples": 5000,
+      "block_months": 3,
+      "seed": 1101202602,
+      "prior_candidate_count": 10,
+      "new_candidate_count": 12,
+      "selection_control": "Bonferroni across 22 declared candidate slots; does not cure adaptive reuse",
+      "reference_benchmark": "qqq95_hold"
+    },
+    "live_approved": false
+  },
+  "config_sha256": "149ebd80c912f5dbbc35980c6bfb9be510a4401748c0227321dff29346353ab1",
+  "sources": {
+    "cash_cow/__init__.py": "b864498d5775625b97f5c63f5321de8ecf9182e8ed71f19e0f66eab5a90e9e0b",
+    "cash_cow/data.py": "20580c4b8444075bf50de76474706b30132a967b33e6f9e52328ea764a6ff217",
+    "cash_cow/data_v2.py": "abe24156f2f61d1c60e60a31b42c34a35fdbd074f917a55e0ec126dc264621ed",
+    "cash_cow/engine.py": "a2bfef743d9b40d47c503bd8b4c51014d1ad7df02ec7955ad7ab4380ed5d3342",
+    "cash_cow/run.py": "815e7c1bce76127b2c7183bf92fc16a3cbc7dd85571f212a4848cba784c11f99",
+    "cash_cow/run_v2.py": "d5043fdcdd706dc86b398ba7baff452647fa3c03f5b6c7faae2201f0b2e1466d",
+    "cash_cow/strategies.py": "d83d3990cace77918f8ceea8463e8da61bbdc12aa56b0cf8a6789b1c7000b47b",
+    "cash_cow/strategies_v2.py": "f480e353402dfb44cda1edb3e83f8bff88cc8124cc8b7d85e1776c1b6c1b0401"
+  },
+  "data": {
+    "research_date": "2026-11-01",
+    "prepared_utc": "2026-11-02T02:17:39.227583+00:00",
+    "provider": "Yahoo Finance via yfinance; unofficial personal research data",
+    "config_sha256": "149ebd80c912f5dbbc35980c6bfb9be510a4401748c0227321dff29346353ab1",
+    "files": {
+      "SPY": {
+        "sha256": "67371e45a62f59f0dd6ad6c10d220ad5365c8dc6c612003240968f3f2acd26e4",
+        "rows": 4781,
+        "start": "2006-01-03",
+        "end": "2024-12-31",
+        "post_window_split_factor": 1.0,
+        "splits": {},
+        "capital_gains_events": 0,
+        "spin_off_cash_proxies": {}
+      },
+      "QQQ": {
+        "sha256": "267db3e2b97167b89c9387c12ea1a38dbb2c95f1fa515c0ca7a62e0c3f5c7d0a",
+        "rows": 4781,
+        "start": "2006-01-03",
+        "end": "2024-12-31",
+        "post_window_split_factor": 1.0,
+        "splits": {},
+        "capital_gains_events": 0,
+        "spin_off_cash_proxies": {}
+      },
+      "BIL": {
+        "sha256": "b596f89217b6e95202e2a2472555f9e0bf9e0ecec219c173f77b3cdfb56c52c7",
+        "rows": 4429,
+        "start": "2007-05-30",
+        "end": "2024-12-31",
+        "post_window_split_factor": 1.0,
+        "splits": {
+          "2017-11-30": 0.5
+        },
+        "capital_gains_events": 0,
+        "spin_off_cash_proxies": {}
+      },
+      "QLD": {
+        "sha256": "0402a81e030c1ca7faaec1204c4a2fb82df384ba13ff0e4aef0251f83b594e7d",
+        "rows": 4664,
+        "start": "2006-06-21",
+        "end": "2024-12-31",
+        "post_window_split_factor": 2,
+        "splits": {
+          "2012-05-11": 2.0,
+          "2015-05-20": 2.0,
+          "2017-07-17": 2.0,
+          "2020-08-18": 2.0,
+          "2021-05-25": 2.0
+        },
+        "capital_gains_events": 0,
+        "spin_off_cash_proxies": {}
+      },
+      "TQQQ": {
+        "sha256": "7bba6d8b0b34df108d13ebff4642c42cef60361ff8c75b3956283d86bb8a6d22",
+        "rows": 3747,
+        "start": "2010-02-11",
+        "end": "2024-12-31",
+        "post_window_split_factor": 2,
+        "splits": {
+          "2011-02-25": 2.0,
+          "2012-05-11": 2.0,
+          "2014-01-24": 2.0,
+          "2017-01-12": 2.0,
+          "2018-05-24": 3.0,
+          "2021-01-21": 2.0,
+          "2022-01-13": 2.0
+        },
+        "capital_gains_events": 0,
+        "spin_off_cash_proxies": {}
+      },
+      "UPRO": {
+        "sha256": "42ca59581db62b1daa8165e02d8f643dc0d7d729450e9f1e327c235ce96b37a2",
+        "rows": 3906,
+        "start": "2009-06-25",
+        "end": "2024-12-31",
+        "post_window_split_factor": 1.0,
+        "splits": {
+          "2011-02-25": 3.0,
+          "2013-06-10": 2.0,
+          "2015-05-20": 2.0,
+          "2018-05-24": 3.0,
+          "2022-01-13": 2.0
+        },
+        "capital_gains_events": 0,
+        "spin_off_cash_proxies": {}
+      },
+      "XLB": {
+        "sha256": "2e43b726a430806ac25cc714b7adf8a16903864de8598508db9b9fac449141f0",
+        "rows": 4781,
+        "start": "2006-01-03",
+        "end": "2024-12-31",
+        "post_window_split_factor": 2,
+        "splits": {},
+        "capital_gains_events": 0,
+        "spin_off_cash_proxies": {}
+      },
+      "XLE": {
+        "sha256": "20b2bde0da0d8c40984ff0410fdb7801c19d6d1d7ef1816c3eeccc1ce1548f4b",
+        "rows": 4781,
+        "start": "2006-01-03",
+        "end": "2024-12-31",
+        "post_window_split_factor": 2,
+        "splits": {},
+        "capital_gains_events": 0,
+        "spin_off_cash_proxies": {}
+      },
+      "XLF": {
+        "sha256": "13809e1bf466e508482e5dd3feab34086599cfb3174c1f5a1b34eacbfd21585d",
+        "rows": 4781,
+        "start": "2006-01-03",
+        "end": "2024-12-31",
+        "post_window_split_factor": 1.0,
+        "splits": {
+          "2016-09-19": 1.231
+        },
+        "capital_gains_events": 0,
+        "spin_off_cash_proxies": {
+          "2016-09-19": 4.443564
+        }
+      },
+      "XLI": {
+        "sha256": "f5ca67f3091b5d4fe46f166dea3af532e72b6536a02cd08fecd700ca57bf4d0f",
+        "rows": 4781,
+        "start": "2006-01-03",
+        "end": "2024-12-31",
+        "post_window_split_factor": 1.0,
+        "splits": {},
+        "capital_gains_events": 0,
+        "spin_off_cash_proxies": {}
+      },
+      "XLK": {
+        "sha256": "dd51b2034c105ea2aa9cb0aa822736e50a72eb55cd32ce937fda3f15a6d8dd57",
+        "rows": 4781,
+        "start": "2006-01-03",
+        "end": "2024-12-31",
+        "post_window_split_factor": 2,
+        "splits": {},
+        "capital_gains_events": 0,
+        "spin_off_cash_proxies": {}
+      },
+      "XLP": {
+        "sha256": "c3ffe3297ebb445b7b3f226e74fae7ff1bd67f6f0ac698208a47fbc71f652bca",
+        "rows": 4781,
+        "start": "2006-01-03",
+        "end": "2024-12-31",
+        "post_window_split_factor": 1.0,
+        "splits": {},
+        "capital_gains_events": 0,
+        "spin_off_cash_proxies": {}
+      },
+      "XLU": {
+        "sha256": "dad07c10add9da90d4c08248a3fc7fd96560810939ace77e0ae7c0eddc630f51",
+        "rows": 4781,
+        "start": "2006-01-03",
+        "end": "2024-12-31",
+        "post_window_split_factor": 2,
+        "splits": {},
+        "capital_gains_events": 0,
+        "spin_off_cash_proxies": {}
+      },
+      "XLV": {
+        "sha256": "3f8f137383569e4b36fd7b18e1ea3192b7f5d9e392dc8bc1f26420fe5640848c",
+        "rows": 4781,
+        "start": "2006-01-03",
+        "end": "2024-12-31",
+        "post_window_split_factor": 1.0,
+        "splits": {},
+        "capital_gains_events": 0,
+        "spin_off_cash_proxies": {}
+      },
+      "XLY": {
+        "sha256": "6b0a0331f858ac04a745bd91a63caa0bb36f4cecdc230a43a5a6c430299e37a9",
+        "rows": 4781,
+        "start": "2006-01-03",
+        "end": "2024-12-31",
+        "post_window_split_factor": 2,
+        "splits": {},
+        "capital_gains_events": 0,
+        "spin_off_cash_proxies": {}
+      }
+    },
+    "post_window_sources": [
+      "https://www.proshares.com/press-releases/proshares-announces-etf-share-splits5",
+      "https://www.sec.gov/Archives/edgar/data/1064641/000119312526256847/d128483dncsrs.htm"
+    ],
+    "limitations": "Known issuer-reported post-window splits restored; not an exhaustive independent corporate-action audit. No post-2024 price bars used."
+  },
+  "python": "3.14.7",
+  "status": "complete",
+  "live_approved": false,
+  "completed_simulations": 209,
+  "elapsed_seconds": 36.86857529205736
+}

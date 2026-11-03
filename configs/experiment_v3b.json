@@ -1,0 +1,104 @@
+{
+  "version": "v3b_rest_of_day_followup",
+  "research_date": "2026-11-02",
+  "data_source": "HistoricalData.net free SPY sample; raw, start-labelled US Eastern minute OHLCV",
+  "download_url": "https://historicaldata.net/file/stocks_sample_2022H2.zip",
+  "warmup_start": "2022-07-01",
+  "evaluation_start": "2022-08-01",
+  "evaluation_end": "2022-12-30",
+  "sample_status": "Five-month availability-selected pilot, not multi-regime validation or exact paper replication",
+  "capital": 2000,
+  "currency": "USD",
+  "currency_confirmed": false,
+  "target_monthly": 0.1,
+  "reserved_price_bars": "2025 onward remain unfetched",
+  "rules": [
+    {
+      "id": "rest_of_day_fixed",
+      "family": "rest_of_day",
+      "sizing": "fixed"
+    },
+    {
+      "id": "rest_of_day_vol_target",
+      "family": "rest_of_day",
+      "sizing": "vol_target"
+    }
+  ],
+  "benchmarks": [],
+  "noise_lookback": 14,
+  "daily_vol_lookback": 14,
+  "target_daily_vol": 0.02,
+  "max_reference_leverage": 4,
+  "base": {
+    "slippage_bps": 2,
+    "slippage_dollars": 0,
+    "commission_per_share": 0.0035,
+    "minimum_commission": 0.4,
+    "latency_minutes": 1,
+    "whole_shares": true,
+    "allocation": 0.95,
+    "monthly_overhead": 0,
+    "borrow_annual_rate": 0.03,
+    "participation_cap": 0.01
+  },
+  "scenarios": [
+    {
+      "id": "01_base"
+    },
+    {
+      "id": "02_zero_extra_latency",
+      "latency_minutes": 0
+    },
+    {
+      "id": "03_two_minute_latency",
+      "latency_minutes": 2
+    },
+    {
+      "id": "04_five_minute_latency",
+      "latency_minutes": 5
+    },
+    {
+      "id": "05_five_bps",
+      "slippage_bps": 5
+    },
+    {
+      "id": "06_ten_bps",
+      "slippage_bps": 10
+    },
+    {
+      "id": "07_higher_fees",
+      "minimum_commission": 1.1
+    },
+    {
+      "id": "08_monthly_overhead",
+      "monthly_overhead": 10
+    },
+    {
+      "id": "09_fractional",
+      "whole_shares": false
+    },
+    {
+      "id": "10_half_allocation",
+      "allocation": 0.475
+    }
+  ],
+  "account_models": [
+    "cash_long_only",
+    "hypothetical_margin_long_short"
+  ],
+  "paper_cost_diagnostic": {
+    "capital": 100000,
+    "slippage_bps": 0,
+    "slippage_dollars": 0.001,
+    "minimum_commission": 0,
+    "latency_minutes": 0,
+    "allocation": 1
+  },
+  "modern_cash_diagnostic": {
+    "settlement_override": 1
+  },
+  "live_approved": false,
+  "selection_policy": "Added after inspecting v3 outcomes; reused five-month pilot. Return from previous close to 15:30 predicts final half-hour. SPY sign adaptation plus declared 2%-volatility sizing hybrid. No tuning, fresh inference or alpha claim.",
+  "paper": "Baltussen, Da, Lammers and Martens (2021), Hedging demand and market intraday momentum",
+  "source": "https://academicweb.nd.edu/~zda/intramom.pdf"
+}

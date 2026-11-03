@@ -1,0 +1,19 @@
+{
+  "run_id": "20261101T075044Z_v1_accounting_fix",
+  "unit_tests_passed": 24,
+  "validation_ledgers_verified": 130,
+  "candidate_scenario_runs": 100,
+  "summary_rows": 143,
+  "checks": [
+    "positive finite NAV",
+    "nonnegative settled cash",
+    "NAV identity including expense payables",
+    "signal strictly before fill",
+    "positive fill quantities",
+    "108 monthly observations per validation run",
+    "no duplicate strategy-scenario rows",
+    "source and input hashes match",
+    "BIL reverse split nominal-price continuity"
+  ],
+  "limitations": "Tests verify specified simulation behavior, not vendor accuracy, real fills, future profitability or live readiness."
+}

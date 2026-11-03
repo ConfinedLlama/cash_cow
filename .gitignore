@@ -1,0 +1,12 @@
+.venv/
+__pycache__/
+.pytest_cache/
+.DS_Store
+.env
+.env.*
+data/raw/
+data/normalized/
+reports/runs/*/paths/
+reports/runs/*/trades/
+reports/runs/*/monthly/
+*.log

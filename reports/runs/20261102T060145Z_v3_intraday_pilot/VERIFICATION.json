@@ -1,0 +1,10 @@
+{
+  "status": "passed",
+  "runs": 192,
+  "total_orders": 21944,
+  "maximum_nav_reconciliation_error": 1.1204974725842476e-09,
+  "all_flat_overnight": true,
+  "all_cash_accounts_nonnegative_and_long_only": true,
+  "all_fills_at_or_after_signal_available": true,
+  "limits": "Internal ledger reconciliation and sample validation, not independently verified execution or statistical edge."
+}

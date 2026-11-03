@@ -1,0 +1,43 @@
+{
+  "version": "v1",
+  "research_date": "2026-11-01",
+  "purpose": "Exploratory historical screening, not live approval or proof of an edge",
+  "currency": "USD",
+  "capital": 2000,
+  "capital_currency_confirmed_by_user": false,
+  "symbols": ["SPY", "QQQ", "IWM", "EFA", "IEF", "TLT", "GLD", "SHY", "BIL"],
+  "download_start": "2006-01-01",
+  "download_end_exclusive": "2025-01-01",
+  "development_start": "2008-01-02",
+  "validation_start": "2016-01-04",
+  "validation_end": "2024-12-31",
+  "reserved_history": "2025 onward is not fetched or evaluated in v1",
+  "strategies": ["sma200", "ma_cross", "absolute_momentum", "donchian", "rsi2", "bollinger", "relative_momentum", "dual_momentum", "inverse_vol_trend", "vol_target"],
+  "benchmarks": ["cash", "spy_25", "bills_100"],
+  "fixed_parameters": {
+    "sma200": {"window": 200, "frequency": "monthly"},
+    "ma_cross": {"fast": 50, "slow": 200, "frequency": "weekly"},
+    "absolute_momentum": {"window": 252, "frequency": "monthly"},
+    "donchian": {"entry": 55, "exit": 20, "frequency": "daily", "price": "total-return close"},
+    "rsi2": {"window": 2, "entry": 10, "exit": 70, "trend": 200, "max_holding_signal_sessions": 5},
+    "bollinger": {"window": 20, "entry_standard_deviations": 2, "exit": "mean", "trend": 200, "max_holding_signal_sessions": 10},
+    "relative_momentum": {"window": 126, "top_n": 2, "positive_only": true, "frequency": "monthly"},
+    "dual_momentum": {"window": 252, "universe": ["SPY", "EFA"], "hurdle": "SHY trailing return", "frequency": "monthly"},
+    "inverse_vol_trend": {"vol_window": 63, "trend": 200, "universe": ["SPY", "IEF", "GLD"], "frequency": "monthly"},
+    "vol_target": {"vol_window": 63, "annual_vol_target": 0.05, "frequency": "monthly"}
+  },
+  "base": {"exposure_cap": 0.25, "one_way_slippage_bps": 5, "commission_per_order": 0.4, "extra_signal_delay_sessions": 0, "whole_shares": false, "monthly_overhead": 0, "settlement_sessions": 3, "dividend_cash_delay_sessions": 30, "all_dividends_withholding": false},
+  "scenarios": [
+    {"name": "01_base"},
+    {"name": "02_higher_costs", "one_way_slippage_bps": 10, "commission_per_order": 1.1},
+    {"name": "03_severe_slippage", "one_way_slippage_bps": 25},
+    {"name": "04_delay_one_session", "extra_signal_delay_sessions": 1},
+    {"name": "05_delay_three_sessions", "extra_signal_delay_sessions": 3},
+    {"name": "06_half_capital", "capital": 1000},
+    {"name": "07_whole_shares", "whole_shares": true},
+    {"name": "08_monthly_overhead", "monthly_overhead": 10},
+    {"name": "09_dividend_tax_stress", "all_dividends_withholding": true},
+    {"name": "10_full_exposure_research_only", "exposure_cap": 1.0}
+  ],
+  "selection": {"live_approval": false, "positive_mean_monthly_excess_vs_bills_required": true, "holm_alpha": 0.05, "bootstrap_samples": 5000, "bootstrap_block_months": 3, "seed": 11012026, "provisional_max_drawdown": 0.05, "provisional_worst_month": -0.02}
+}

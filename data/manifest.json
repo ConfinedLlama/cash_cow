@@ -1,0 +1,73 @@
+{
+  "provider": "Yahoo Finance via yfinance; unofficial personal research access",
+  "research_date": "2026-11-01",
+  "retrieved_at_utc": "2026-11-01T07:42:42.547406+00:00",
+  "start": "2006-01-01",
+  "end_exclusive": "2025-01-01",
+  "config_sha256": "e62042fe5132bbdbff5198a25245d3890695b209e19a731fda3f5fce3e0d6349",
+  "files": {
+    "SPY": {
+      "sha256": "67371e45a62f59f0dd6ad6c10d220ad5365c8dc6c612003240968f3f2acd26e4",
+      "rows": 4781,
+      "first": "2006-01-03",
+      "last": "2024-12-31",
+      "file_modified_utc": "2026-11-01T07:42:42.944619+00:00"
+    },
+    "QQQ": {
+      "sha256": "267db3e2b97167b89c9387c12ea1a38dbb2c95f1fa515c0ca7a62e0c3f5c7d0a",
+      "rows": 4781,
+      "first": "2006-01-03",
+      "last": "2024-12-31",
+      "file_modified_utc": "2026-11-01T07:42:43.177249+00:00"
+    },
+    "IWM": {
+      "sha256": "3cd7e4c6594087b48d1249f0ec74d5b9814f19f62c7ce64be4c34605a760a3cf",
+      "rows": 4781,
+      "first": "2006-01-03",
+      "last": "2024-12-31",
+      "file_modified_utc": "2026-11-01T07:42:43.399183+00:00"
+    },
+    "EFA": {
+      "sha256": "885b3f874f5191a277711f72738b7e158f2f888627c02583ff06cdb8c6489aa7",
+      "rows": 4781,
+      "first": "2006-01-03",
+      "last": "2024-12-31",
+      "file_modified_utc": "2026-11-01T07:42:43.609825+00:00"
+    },
+    "IEF": {
+      "sha256": "9c43c1ffc396ff5c5b1dc1d447cc2bb981ff35491b06e70571f7f8c4056888e0",
+      "rows": 4781,
+      "first": "2006-01-03",
+      "last": "2024-12-31",
+      "file_modified_utc": "2026-11-01T07:42:43.857964+00:00"
+    },
+    "TLT": {
+      "sha256": "23763eb13d24a264cd28690de89bce6f4fd31abe8c5e242e8c26f80bc4d87dcc",
+      "rows": 4781,
+      "first": "2006-01-03",
+      "last": "2024-12-31",
+      "file_modified_utc": "2026-11-01T07:42:44.107959+00:00"
+    },
+    "GLD": {
+      "sha256": "7c4c8fd9427625fe58c020db0d6449e28e83324b561b067a92b3872048513439",
+      "rows": 4781,
+      "first": "2006-01-03",
+      "last": "2024-12-31",
+      "file_modified_utc": "2026-11-01T07:42:44.273042+00:00"
+    },
+    "SHY": {
+      "sha256": "6ce8bec4c2d83577a585fe3786ef757ce275010d9be293e46b9675a2a8acde50",
+      "rows": 4781,
+      "first": "2006-01-03",
+      "last": "2024-12-31",
+      "file_modified_utc": "2026-11-01T07:42:44.531140+00:00"
+    },
+    "BIL": {
+      "sha256": "b596f89217b6e95202e2a2472555f9e0bf9e0ecec219c173f77b3cdfb56c52c7",
+      "rows": 4429,
+      "first": "2007-05-30",
+      "last": "2024-12-31",
+      "file_modified_utc": "2026-11-01T07:42:44.780666+00:00"
+    }
+  }
+}

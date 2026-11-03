@@ -1,0 +1,192 @@
+{
+  "status": "complete",
+  "run_id": "20261102T060145Z_v3_intraday_pilot",
+  "config": {
+    "version": "v3_intraday_pilot",
+    "research_date": "2026-11-02",
+    "data_source": "HistoricalData.net free SPY sample; raw, start-labelled US Eastern minute OHLCV",
+    "download_url": "https://historicaldata.net/file/stocks_sample_2022H2.zip",
+    "warmup_start": "2022-07-01",
+    "evaluation_start": "2022-08-01",
+    "evaluation_end": "2022-12-30",
+    "sample_status": "Five-month availability-selected pilot, not multi-regime validation or exact paper replication",
+    "capital": 2000,
+    "currency": "USD",
+    "currency_confirmed": false,
+    "target_monthly": 0.1,
+    "reserved_price_bars": "2025 onward remain unfetched",
+    "rules": [
+      {
+        "id": "gao_first_half",
+        "family": "gao",
+        "filter": "none",
+        "sizing": "fixed"
+      },
+      {
+        "id": "gao_agreement",
+        "family": "gao",
+        "filter": "agreement",
+        "sizing": "fixed"
+      },
+      {
+        "id": "gao_high_volume",
+        "family": "gao",
+        "filter": "volume",
+        "volume_lookback": 20,
+        "sizing": "fixed"
+      },
+      {
+        "id": "noise_opposite_band",
+        "family": "noise",
+        "stop": "opposite",
+        "sizing": "fixed"
+      },
+      {
+        "id": "noise_current_vwap",
+        "family": "noise",
+        "stop": "vwap",
+        "sizing": "fixed"
+      },
+      {
+        "id": "noise_vol_target",
+        "family": "noise",
+        "stop": "vwap",
+        "sizing": "vol_target"
+      }
+    ],
+    "benchmarks": [
+      {
+        "id": "cash",
+        "family": "cash",
+        "sizing": "fixed"
+      },
+      {
+        "id": "intraday_always_long",
+        "family": "always_long",
+        "sizing": "fixed"
+      },
+      {
+        "id": "last_half_always_long",
+        "family": "last_half_long",
+        "sizing": "fixed"
+      }
+    ],
+    "noise_lookback": 14,
+    "daily_vol_lookback": 14,
+    "target_daily_vol": 0.02,
+    "max_reference_leverage": 4,
+    "base": {
+      "slippage_bps": 2,
+      "slippage_dollars": 0,
+      "commission_per_share": 0.0035,
+      "minimum_commission": 0.4,
+      "latency_minutes": 1,
+      "whole_shares": true,
+      "allocation": 0.95,
+      "monthly_overhead": 0,
+      "borrow_annual_rate": 0.03,
+      "participation_cap": 0.01
+    },
+    "scenarios": [
+      {
+        "id": "01_base"
+      },
+      {
+        "id": "02_zero_extra_latency",
+        "latency_minutes": 0
+      },
+      {
+        "id": "03_two_minute_latency",
+        "latency_minutes": 2
+      },
+      {
+        "id": "04_five_minute_latency",
+        "latency_minutes": 5
+      },
+      {
+        "id": "05_five_bps",
+        "slippage_bps": 5
+      },
+      {
+        "id": "06_ten_bps",
+        "slippage_bps": 10
+      },
+      {
+        "id": "07_higher_fees",
+        "minimum_commission": 1.1
+      },
+      {
+        "id": "08_monthly_overhead",
+        "monthly_overhead": 10
+      },
+      {
+        "id": "09_fractional",
+        "whole_shares": false
+      },
+      {
+        "id": "10_half_allocation",
+        "allocation": 0.475
+      }
+    ],
+    "account_models": [
+      "cash_long_only",
+      "hypothetical_margin_long_short"
+    ],
+    "paper_cost_diagnostic": {
+      "capital": 100000,
+      "slippage_bps": 0,
+      "slippage_dollars": 0.001,
+      "minimum_commission": 0,
+      "latency_minutes": 0,
+      "allocation": 1
+    },
+    "modern_cash_diagnostic": {
+      "settlement_override": 1
+    },
+    "live_approved": false,
+    "selection_policy": "No optimization. All six rules and ten scenarios retained. Gao filters are adaptations. Hypothetical margin ignores eligibility/PDT and is not an executable $2000 account claim."
+  },
+  "config_sha256": "b37d678db6c5d530e95b26943d833c3ae1a277190e325873c8b7ab056e7dfb8f",
+  "data": {
+    "provider": "HistoricalData.net",
+    "source": "https://historicaldata.net/file/stocks_sample_2022H2.zip",
+    "retrieved_or_verified_utc": "2026-11-02T06:01:45.740808+00:00",
+    "archive_sha256": "3640e34b8de32d86a3e1fd83e68e99013e5c130f72ed3a93287a2b651b24f843",
+    "file_hashes": {
+      "day_by_symbol/SPY_day.csv": "9cb3de55e033dd9933317c316c8a8e9d6831334cf88d5ab830805585dfe77cd6",
+      "minute_by_symbol/SPY_minute.csv": "e1b52a0ccc99b3e5b3a526db68c75615984fefc86cae328c9b1a19cbf67857ef"
+    },
+    "validation": {
+      "regular_bars": 49350,
+      "sessions": 127,
+      "missing_minutes": 0,
+      "early_close_sessions": [
+        "2022-11-25"
+      ],
+      "max_daily_vs_last_minute_close_bps": 5.151098901098328,
+      "yahoo_daily_close_max_difference_bps": 0.00039956459252366017
+    },
+    "price_basis": "raw nominal OHLC, not future-adjusted adj_* columns",
+    "vwap": "minute vwap unavailable; cumulative HLC3 times volume proxy, disclosed adaptation",
+    "license": "Free sample evaluation allowed; raw data excluded from Git and redistribution"
+  },
+  "sources": {
+    "cash_cow/__init__.py": "b864498d5775625b97f5c63f5321de8ecf9182e8ed71f19e0f66eab5a90e9e0b",
+    "cash_cow/data.py": "20580c4b8444075bf50de76474706b30132a967b33e6f9e52328ea764a6ff217",
+    "cash_cow/data_v2.py": "abe24156f2f61d1c60e60a31b42c34a35fdbd074f917a55e0ec126dc264621ed",
+    "cash_cow/engine.py": "a2bfef743d9b40d47c503bd8b4c51014d1ad7df02ec7955ad7ab4380ed5d3342",
+    "cash_cow/intraday/__init__.py": "5da52d62f74744d884f2e5697ab954489329bb2436e31f08713cbe43e56646ce",
+    "cash_cow/intraday/data.py": "27452768a5e5d7671fb82d60dcd0ee2d344eb20eef8a3526d797a06aafeb76cc",
+    "cash_cow/intraday/engine.py": "183d4024b495a4da138f788a0f3ba06f0bf3645210526c70542e2f07f825ce40",
+    "cash_cow/intraday/run.py": "3bc1ef3ec4ff136ceaa113309b43e9849b4027cc0466e9742d52057ad72cdf99",
+    "cash_cow/intraday/signals.py": "dd3b1c3d44f09be794ddef9221abce9be11409cc5b3411f921c66723a42caffb",
+    "cash_cow/run.py": "815e7c1bce76127b2c7183bf92fc16a3cbc7dd85571f212a4848cba784c11f99",
+    "cash_cow/run_v2.py": "d5043fdcdd706dc86b398ba7baff452647fa3c03f5b6c7faae2201f0b2e1466d",
+    "cash_cow/strategies.py": "d83d3990cace77918f8ceea8463e8da61bbdc12aa56b0cf8a6789b1c7000b47b",
+    "cash_cow/strategies_v2.py": "f480e353402dfb44cda1edb3e83f8bff88cc8124cc8b7d85e1776c1b6c1b0401",
+    "cash_cow/verify_v2.py": "69577c6b0e2b95796daa7c75d5df18bdaa5617d4b8f224ceebe61706fd31e35f"
+  },
+  "python": "3.14.7",
+  "live_approved": false,
+  "completed_simulations": 192
+}

@@ -1,0 +1,189 @@
+{
+  "research_date": "2026-11-01",
+  "prepared_utc": "2026-11-02T02:20:49.205886+00:00",
+  "provider": "Yahoo Finance via yfinance; unofficial personal research data",
+  "config_sha256": "149ebd80c912f5dbbc35980c6bfb9be510a4401748c0227321dff29346353ab1",
+  "files": {
+    "SPY": {
+      "sha256": "67371e45a62f59f0dd6ad6c10d220ad5365c8dc6c612003240968f3f2acd26e4",
+      "rows": 4781,
+      "start": "2006-01-03",
+      "end": "2024-12-31",
+      "post_window_split_factor": 1.0,
+      "splits": {},
+      "capital_gains_events": 0,
+      "spin_off_cash_proxies": {}
+    },
+    "QQQ": {
+      "sha256": "267db3e2b97167b89c9387c12ea1a38dbb2c95f1fa515c0ca7a62e0c3f5c7d0a",
+      "rows": 4781,
+      "start": "2006-01-03",
+      "end": "2024-12-31",
+      "post_window_split_factor": 1.0,
+      "splits": {},
+      "capital_gains_events": 0,
+      "spin_off_cash_proxies": {}
+    },
+    "BIL": {
+      "sha256": "b596f89217b6e95202e2a2472555f9e0bf9e0ecec219c173f77b3cdfb56c52c7",
+      "rows": 4429,
+      "start": "2007-05-30",
+      "end": "2024-12-31",
+      "post_window_split_factor": 1.0,
+      "splits": {
+        "2017-11-30": 0.5
+      },
+      "capital_gains_events": 0,
+      "spin_off_cash_proxies": {}
+    },
+    "QLD": {
+      "sha256": "0402a81e030c1ca7faaec1204c4a2fb82df384ba13ff0e4aef0251f83b594e7d",
+      "rows": 4664,
+      "start": "2006-06-21",
+      "end": "2024-12-31",
+      "post_window_split_factor": 2,
+      "splits": {
+        "2012-05-11": 2.0,
+        "2015-05-20": 2.0,
+        "2017-07-17": 2.0,
+        "2020-08-18": 2.0,
+        "2021-05-25": 2.0
+      },
+      "capital_gains_events": 0,
+      "spin_off_cash_proxies": {}
+    },
+    "TQQQ": {
+      "sha256": "7bba6d8b0b34df108d13ebff4642c42cef60361ff8c75b3956283d86bb8a6d22",
+      "rows": 3747,
+      "start": "2010-02-11",
+      "end": "2024-12-31",
+      "post_window_split_factor": 2,
+      "splits": {
+        "2011-02-25": 2.0,
+        "2012-05-11": 2.0,
+        "2014-01-24": 2.0,
+        "2017-01-12": 2.0,
+        "2018-05-24": 3.0,
+        "2021-01-21": 2.0,
+        "2022-01-13": 2.0
+      },
+      "capital_gains_events": 0,
+      "spin_off_cash_proxies": {}
+    },
+    "UPRO": {
+      "sha256": "42ca59581db62b1daa8165e02d8f643dc0d7d729450e9f1e327c235ce96b37a2",
+      "rows": 3906,
+      "start": "2009-06-25",
+      "end": "2024-12-31",
+      "post_window_split_factor": 1.0,
+      "splits": {
+        "2011-02-25": 3.0,
+        "2013-06-10": 2.0,
+        "2015-05-20": 2.0,
+        "2018-05-24": 3.0,
+        "2022-01-13": 2.0
+      },
+      "capital_gains_events": 0,
+      "spin_off_cash_proxies": {}
+    },
+    "XLB": {
+      "sha256": "2e43b726a430806ac25cc714b7adf8a16903864de8598508db9b9fac449141f0",
+      "rows": 4781,
+      "start": "2006-01-03",
+      "end": "2024-12-31",
+      "post_window_split_factor": 2,
+      "splits": {},
+      "capital_gains_events": 0,
+      "spin_off_cash_proxies": {}
+    },
+    "XLE": {
+      "sha256": "20b2bde0da0d8c40984ff0410fdb7801c19d6d1d7ef1816c3eeccc1ce1548f4b",
+      "rows": 4781,
+      "start": "2006-01-03",
+      "end": "2024-12-31",
+      "post_window_split_factor": 2,
+      "splits": {},
+      "capital_gains_events": 0,
+      "spin_off_cash_proxies": {}
+    },
+    "XLF": {
+      "sha256": "13809e1bf466e508482e5dd3feab34086599cfb3174c1f5a1b34eacbfd21585d",
+      "rows": 4781,
+      "start": "2006-01-03",
+      "end": "2024-12-31",
+      "post_window_split_factor": 1.0,
+      "splits": {
+        "2016-09-19": 1.231
+      },
+      "capital_gains_events": 0,
+      "spin_off_cash_proxies": {
+        "2016-09-19": 4.443564
+      }
+    },
+    "XLI": {
+      "sha256": "f5ca67f3091b5d4fe46f166dea3af532e72b6536a02cd08fecd700ca57bf4d0f",
+      "rows": 4781,
+      "start": "2006-01-03",
+      "end": "2024-12-31",
+      "post_window_split_factor": 1.0,
+      "splits": {},
+      "capital_gains_events": 0,
+      "spin_off_cash_proxies": {}
+    },
+    "XLK": {
+      "sha256": "dd51b2034c105ea2aa9cb0aa822736e50a72eb55cd32ce937fda3f15a6d8dd57",
+      "rows": 4781,
+      "start": "2006-01-03",
+      "end": "2024-12-31",
+      "post_window_split_factor": 2,
+      "splits": {},
+      "capital_gains_events": 0,
+      "spin_off_cash_proxies": {}
+    },
+    "XLP": {
+      "sha256": "c3ffe3297ebb445b7b3f226e74fae7ff1bd67f6f0ac698208a47fbc71f652bca",
+      "rows": 4781,
+      "start": "2006-01-03",
+      "end": "2024-12-31",
+      "post_window_split_factor": 1.0,
+      "splits": {},
+      "capital_gains_events": 0,
+      "spin_off_cash_proxies": {}
+    },
+    "XLU": {
+      "sha256": "dad07c10add9da90d4c08248a3fc7fd96560810939ace77e0ae7c0eddc630f51",
+      "rows": 4781,
+      "start": "2006-01-03",
+      "end": "2024-12-31",
+      "post_window_split_factor": 2,
+      "splits": {},
+      "capital_gains_events": 0,
+      "spin_off_cash_proxies": {}
+    },
+    "XLV": {
+      "sha256": "3f8f137383569e4b36fd7b18e1ea3192b7f5d9e392dc8bc1f26420fe5640848c",
+      "rows": 4781,
+      "start": "2006-01-03",
+      "end": "2024-12-31",
+      "post_window_split_factor": 1.0,
+      "splits": {},
+      "capital_gains_events": 0,
+      "spin_off_cash_proxies": {}
+    },
+    "XLY": {
+      "sha256": "6b0a0331f858ac04a745bd91a63caa0bb36f4cecdc230a43a5a6c430299e37a9",
+      "rows": 4781,
+      "start": "2006-01-03",
+      "end": "2024-12-31",
+      "post_window_split_factor": 2,
+      "splits": {},
+      "capital_gains_events": 0,
+      "spin_off_cash_proxies": {}
+    }
+  },
+  "post_window_sources": [
+    "https://www.proshares.com/press-releases/proshares-announces-etf-share-splits5",
+    "https://www.sec.gov/Archives/edgar/data/1064641/000119312526256847/d128483dncsrs.htm"
+  ],
+  "limitations": "Known issuer-reported post-window splits restored; not an exhaustive independent corporate-action audit. No post-2024 price bars used."
+}
