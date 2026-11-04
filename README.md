@@ -4,7 +4,7 @@ Research workspace for US-market strategies on a small Singapore-based account. 
 
 The prospective runner, frozen first strategy, private performance reports, news collection and service controls are documented in [PAPER_RUNNER.md](docs/PAPER_RUNNER.md). Use `.venv/bin/python -m cash_cow.paper status` for actual current state; an installed service is not proof of a completed trading session. Paper execution is simulated, even though it observes current market data.
 
-An [AI-driven paper trial](docs/AI_PAPER_TRIAL.md) is prepared separately and disabled pending model access and an API budget. The November 4 service fix prevents automatic idle sleep; keep the Mac plugged in, online and lid open. Blocked-session reports now distinguish operational outages from valid no-trade decisions.
+The [AI-driven paper trial](docs/AI_PAPER_TRIAL.md) was activated November 4 using the user's existing Codex subscription after a successful model preflight and flat-account cutover. Select `--config paper_ai_v1` when inspecting the active runner; initialization is not trading performance. The service prevents automatic idle sleep; keep the Mac plugged in, online and lid open. Blocked-session reports distinguish operational outages from valid no-trade decisions.
 
 The latest completed historical work is **v3/v3b intraday research**: eight paper-based variants, 236 candidate/benchmark/diagnostic runs and 63 passing tests at that research milestone. Real minute data covers July–December 2022, with five evaluation months. No tested run produced a 10% month. This short pilot cannot establish reliable monthly performance. The **multi-year v4 pipeline is prepared; local Alpaca paper credentials now authenticate, but the historical download and validation remain pending**.
 

@@ -1,11 +1,13 @@
 # Research trial registry
 
-## paper_ai_v1 — prepared November 4, 2026; not activated
+## paper_ai_v1 — activated November 4, 2026, before the US open
 
 - User clarified that the requested live AI decision loop should use Alpaca simulated funds. Prepared a separate model-proposal experiment; no model API call or AI-directed order has occurred at registration.
 - Model proposals use completed five-minute features, fresh quotes, timestamped news and event context. BUY/HOLD/EXIT replaces the ORB decision, while code retains the same execution/risk limits. Current model: GPT-6.1 Sol with low reasoning effort; prompt/config/source frozen on activation. Full protocol: `docs/AI_PAPER_TRIAL.md`.
 - Configuration is disabled with a zero API budget pending the user's API-key and spending-cap choice. Actual model validation and a flat-account service cutover are required before activation. Do not report fixture tests as authenticated model execution.
 - Initial quantitative baseline produced no orders in its first US session because of macOS sleep and a monitoring-gap block, not because it evaluated a full session and found no opportunities. Preserve the incident and do not claim either baseline or AI profitability.
+- Follow-up: user selected their existing subscription. The bundled Codex CLI authenticated using ChatGPT and returned a valid HOLD in the guarded preflight. Updated backend `codex_subscription` is enabled with at most 80 attempts per New York date, no API fallback, and a 45-second subprocess timeout. Three failed integration/diagnostic attempts are preserved in the private ledger; deprecated/experimental option warnings were corrected before successful preflight.
+- After verifying the paper account flat and the baseline stopped, the AI service started at approximately 04:27 UTC November 4. Fresh heartbeat/news and idle-sleep assertion verified; zero AI orders and zero completed AI sessions. The 20 scheduled-session observation window starts November 4. Historical holdout remains untouched. See the trial protocol for costs, benchmark and failure-retention rules.
 
 ## paper_orb30_v1 — prospective registration, 3 November 2026
 
