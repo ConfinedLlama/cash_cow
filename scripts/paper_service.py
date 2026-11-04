@@ -39,7 +39,7 @@ def main():
     client.quote(config["feed"])
     logs = ROOT / ".local/paper"
     logs.mkdir(parents=True, exist_ok=True)
-    spec = {"Label": LABEL, "ProgramArguments": [str(ROOT / ".venv/bin/python"), "-u", "-m", "cash_cow.paper", "run"],
+    spec = {"Label": LABEL, "ProgramArguments": ["/usr/bin/caffeinate", "-i", str(ROOT / ".venv/bin/python"), "-u", "-m", "cash_cow.paper", "run"],
             "WorkingDirectory": str(ROOT), "RunAtLoad": True,
             "KeepAlive": {"SuccessfulExit": False}, "ThrottleInterval": 60,
             "StandardOutPath": str(logs / "runner.log"), "StandardErrorPath": str(logs / "error.log"),
