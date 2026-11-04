@@ -17,7 +17,10 @@
   "poll_seconds": 15,
   "end_date": "2026-12-31",
   "ai": {
-    "enabled": false,
+    "enabled": true,
+    "backend": "codex_subscription",
+    "codex_binary": "/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex",
+    "daily_request_limit": 80,
     "model": "gpt-6.1-sol",
     "daily_budget_usd": 0.0,
     "input_ceiling_per_million": 2.5,

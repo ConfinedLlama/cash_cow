@@ -10,6 +10,9 @@ import hashlib
 import json
 import math
 import os
+import signal
+import subprocess
+import tempfile
 from pathlib import Path
 
 import requests
@@ -69,6 +72,90 @@ def read_openai_key(root):
     if not value:
         raise ValueError("OPENAI_API_KEY is missing locally; do not paste it into chat")
     return value
+
+
+def make_advisor(config, directory, root):
+    cfg = config["ai"]
+    if not cfg["enabled"]:
+        raise ValueError("AI trial is disabled")
+    if cfg.get("backend") == "codex_subscription":
+        if not 1 <= cfg.get("daily_request_limit", 0) <= 80:
+            raise ValueError("Subscription request limit must be between 1 and 80")
+        return CodexAdvisor(config, directory)
+    if cfg.get("backend", "responses_api") != "responses_api" or cfg["daily_budget_usd"] <= 0:
+        raise ValueError("API backend requires an approved positive spending cap")
+    return ResponsesAdvisor(read_openai_key(root), config, directory)
+
+
+class CodexAdvisor:
+    """Use the supported CLI login; never extract tokens or fall back to API billing."""
+
+    def __init__(self, config, directory):
+        self.config, self.directory = config, directory
+
+    def evaluate(self, context, request_id):
+        cfg = self.config["ai"]
+        if not cfg["enabled"] or not 1 <= cfg.get("daily_request_limit", 0) <= 80:
+            raise ValueError("Subscription AI is disabled or has an invalid request limit")
+        path = self.directory / "ai_subscription_usage.json"
+        ledger = json.loads(path.read_text()) if path.exists() else {}
+        entries = ledger.setdefault(context["session_date"], {})
+        if request_id in entries or len(entries) >= cfg["daily_request_limit"]:
+            raise ValueError("Subscription request already attempted or daily limit reached")
+        payload = PROMPT + "\nUse only the supplied packet. Do not use tools.\n" + json.dumps(context, sort_keys=True)
+        if len(payload.encode()) > 20000:
+            raise ValueError("Subscription packet exceeds size cap")
+        entries[request_id] = {"status": "pending"}
+        atomic_json(path, ledger)
+        env = {k: os.environ[k] for k in ("HOME", "PATH", "TMPDIR", "LANG", "USER") if k in os.environ}
+        with tempfile.TemporaryDirectory(prefix="cashcow-advisor-") as folder:
+            schema = Path(folder) / "schema.json"
+            schema.write_text(json.dumps(SCHEMA))
+            args = [cfg["codex_binary"], "exec", "--ignore-user-config", "--ephemeral",
+                    "--skip-git-repo-check", "--sandbox", "read-only", "--json",
+                    "-m", cfg["model"], "--output-schema", str(schema), "-C", folder,
+                    "-c", 'forced_login_method="chatgpt"', "-c", 'web_search="disabled"',
+                    "-c", 'model_reasoning_effort="low"']
+            for feature in ("shell_tool", "apps", "plugins", "browser_use", "computer_use",
+                            "view_image", "hooks", "multi_agent", "js_repl", "code_mode",
+                            "skill_search", "memories"):
+                args += ["--disable", feature]
+            args.append("-")
+            try:
+                process = subprocess.Popen(args, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                                           stderr=subprocess.PIPE, text=True, env=env, start_new_session=True)
+                try:
+                    stdout, _ = process.communicate(payload, timeout=45)
+                except subprocess.TimeoutExpired:
+                    os.killpg(process.pid, signal.SIGKILL)
+                    process.communicate()
+                    raise ValueError("Subscription response timed out; attempt retained") from None
+                if process.returncode:
+                    raise ValueError("Subscription CLI failed; diagnostics withheld; no API fallback")
+                texts, completed = [], False
+                for line in stdout.splitlines():
+                    event = json.loads(line)
+                    if event.get("type") in ("error", "turn.failed"):
+                        raise ValueError("Subscription turn failed")
+                    if event.get("type") == "turn.completed":
+                        completed = True
+                        entries[request_id]["usage"] = event.get("usage", {})
+                    if event.get("type") in ("item.started", "item.completed", "item.updated"):
+                        item = event.get("item", {})
+                        if item.get("type") not in ("agent_message", "reasoning"):
+                            raise ValueError("Unexpected tool activity in subscription proposal")
+                        if event["type"] == "item.completed" and item.get("type") == "agent_message":
+                            texts.append(item["text"])
+                if not completed or len(texts) != 1:
+                    raise ValueError("Subscription response incomplete or ambiguous")
+                proposal = validate_proposal(json.loads(texts[0]), context)
+                entries[request_id]["status"] = "completed"
+                return proposal
+            except (OSError, ValueError):
+                entries[request_id]["status"] = "failed"
+                raise ValueError("Subscription proposal failed; no automatic retry or API fallback") from None
+            finally:
+                atomic_json(path, ledger)
 
 
 def validate_proposal(value, context):

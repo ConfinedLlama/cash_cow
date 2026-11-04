@@ -74,8 +74,9 @@ def write_report(directory, config):
                  f"Collector error: `{news.get('error')}`; latest window truncated: `{news.get('truncated')}`; coverage gap: `{news.get('coverage_gap')}`.",
                  "Headlines and revisions are private research context. They do not place orders or prove a news-trading edge.", ""]
     if config.get("ai"):
-        rows += ["## AI experiment", "", f"Model: `{config['ai']['model']}`. Validated proposals may drive paper entries/exits; code enforces execution limits.",
+        rows += ["## AI experiment", "", f"Model: `{config['ai']['model']}`; backend: `{config['ai'].get('backend', 'responses_api')}`. Validated proposals may drive paper entries/exits; code enforces execution limits.",
                  "Trade P&L above excludes model API costs. The private ai_budget.json holds conservative request reservations; actual provider billing must be reconciled separately.",
+                 "Subscription mode uses ai_subscription_usage.json for attempted requests and token usage. It does not fall back to paid API calls. Subscription allocation/extra credits are not deducted from trading P&L.",
                  "AI confidence scores are not calibrated probabilities. Review ai_decisions/ for the exact packet, response, source times and failures.", ""]
     target = directory / "REPORT.md"
     target.write_text("\n".join(rows))
@@ -94,7 +95,7 @@ def main():
     DIRECTORY = ROOT / "data/telemetry" / args.config
     validate_config(config)
     if args.command == "check-model":
-        from .ai import ResponsesAdvisor, read_openai_key, model_fingerprint
+        from .ai import make_advisor, model_fingerprint
         from .runner import NY
         if not config.get("ai"):
             raise ValueError("Select --config paper_ai_v1 for a model preflight")
@@ -103,13 +104,13 @@ def main():
             day = str(now.astimezone(NY).date())
             context = {"as_of": now.isoformat(), "session_date": day, "position_qty": 0, "news": [],
                        "connection_test_only": True, "instruction": "No market evidence is supplied; return HOLD. This check cannot place orders."}
-            advisor = ResponsesAdvisor(read_openai_key(ROOT), config, DIRECTORY)
-            result = advisor.evaluate(context, "preflight-" + day)
+            advisor = make_advisor(config, DIRECTORY, ROOT)
+            result = advisor.evaluate(context, "preflight-" + day + "-" + model_fingerprint(config)[:12])
             if result["action"] != "HOLD":
                 raise ValueError("Model preflight did not abstain on missing evidence")
             atomic_json(DIRECTORY / "model_preflight.json", {"status": "passed", "at": now.isoformat(),
                         "fingerprint": model_fingerprint(config), "proposal": result})
-            print("Model schema preflight passed; budget reservation recorded. No broker order was placed.")
+            print("Model schema preflight passed; usage attempt recorded. No broker order was placed.")
         return
     if args.command == "status":
         print(json.dumps(status(DIRECTORY), indent=2))
@@ -142,11 +143,9 @@ def main():
             locks.enter_context(exclusive_lock(DIRECTORY))
         provider = None
         if config.get("ai"):
-            from .ai import DecisionProvider, ResponsesAdvisor, read_openai_key, require_model_preflight
-            if not config["ai"]["enabled"] or config["ai"]["daily_budget_usd"] <= 0:
-                raise ValueError("Configure the approved API budget and enable the AI trial before starting")
+            from .ai import DecisionProvider, make_advisor, require_model_preflight
             require_model_preflight(config, DIRECTORY)
-            provider = DecisionProvider(ResponsesAdvisor(read_openai_key(ROOT), config, DIRECTORY), config, DIRECTORY, ROOT)
+            provider = DecisionProvider(make_advisor(config, DIRECTORY, ROOT), config, DIRECTORY, ROOT)
         runner = Runner(api, config, DIRECTORY, decision_provider=provider)
         atomic_json(DIRECTORY / "process.json", {"pid": os.getpid(), "started_at": datetime.now(timezone.utc).isoformat()})
         def request_stop(*_):

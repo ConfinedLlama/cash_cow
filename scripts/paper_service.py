@@ -34,10 +34,8 @@ def main():
     account, positions, orders = client.account(), client.positions(), client.open_orders()
     config = json.loads((ROOT / "configs" / (args.config + ".json")).read_text())
     if config.get("ai"):
-        from cash_cow.paper.ai import read_openai_key, require_model_preflight
-        if not config["ai"]["enabled"] or config["ai"]["daily_budget_usd"] <= 0:
-            raise SystemExit("AI trial requires an approved positive API budget and enabled configuration")
-        read_openai_key(ROOT)
+        from cash_cow.paper.ai import make_advisor, require_model_preflight
+        make_advisor(config, ROOT / "data/telemetry/paper_ai_v1", ROOT)
         require_model_preflight(config, ROOT / "data/telemetry/paper_ai_v1")
     if account.get("status") != "ACTIVE" or any(account.get(k) for k in ("trading_blocked", "account_blocked", "trade_suspended_by_user")):
         raise SystemExit("Paper account is blocked or inactive")

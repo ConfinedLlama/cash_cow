@@ -8,7 +8,7 @@ from unittest.mock import Mock
 import pytest
 import requests
 
-from cash_cow.paper.ai import ResponsesAdvisor, DecisionProvider, news_context, validate_proposal, require_model_preflight, model_fingerprint
+from cash_cow.paper.ai import ResponsesAdvisor, CodexAdvisor, make_advisor, DecisionProvider, news_context, validate_proposal, require_model_preflight, model_fingerprint
 from cash_cow.paper.runner import Runner
 from cash_cow.paper.client import iso
 from test_paper import FakeAPI, CONFIG
@@ -131,8 +131,10 @@ def test_hold_proposal_does_not_follow_quantitative_buy_signal(tmp_path):
 
 
 def test_disabled_ai_does_not_fall_back_to_quant_strategy(tmp_path):
+    cfg = deepcopy(AI_CONFIG)
+    cfg['ai']['enabled'] = False
     with pytest.raises(ValueError,match='not enabled'):
-        Runner(FakeAPI(),AI_CONFIG,tmp_path)
+        Runner(FakeAPI(),cfg,tmp_path)
 
 
 def test_activation_requires_matching_successful_model_preflight(tmp_path):
@@ -144,3 +146,40 @@ def test_activation_requires_matching_successful_model_preflight(tmp_path):
     cfg['ai']['daily_budget_usd']=5
     with pytest.raises(ValueError):
         require_model_preflight(cfg,tmp_path)
+
+
+def test_subscription_uses_login_and_does_not_inherit_broker_or_api_keys(tmp_path, monkeypatch):
+    monkeypatch.setenv('OPENAI_API_KEY','never-forward')
+    monkeypatch.setenv('APCA_API_SECRET_KEY','never-forward-either')
+    process=Mock(returncode=0)
+    process.communicate.return_value=('\n'.join(json.dumps(e) for e in [
+        {'type':'item.completed','item':{'type':'agent_message','text':json.dumps(proposal('HOLD'))}},
+        {'type':'turn.completed','usage':{'input_tokens':123,'output_tokens':30}}]),'')
+    launch=Mock(return_value=process)
+    monkeypatch.setattr('cash_cow.paper.ai.subprocess.Popen',launch)
+    advisor=make_advisor(AI_CONFIG,tmp_path,tmp_path)
+    assert isinstance(advisor,CodexAdvisor)
+    assert advisor.evaluate(context(FakeAPI()),'a')['action']=='HOLD'
+    args=launch.call_args.args[0]; env=launch.call_args.kwargs['env']
+    assert 'forced_login_method="chatgpt"' in args
+    assert 'OPENAI_API_KEY' not in env and 'APCA_API_SECRET_KEY' not in env
+    assert '--ignore-user-config' in args and 'shell_tool' in args
+    with pytest.raises(ValueError): advisor.evaluate(context(FakeAPI()),'a')
+    assert launch.call_count==1
+
+
+@pytest.mark.parametrize('failure',['timeout','tool','limit','exit'])
+def test_subscription_failures_never_produce_proposals(tmp_path,monkeypatch,failure):
+    import subprocess
+    cfg=deepcopy(AI_CONFIG);cfg['ai']['daily_request_limit']=1
+    process=Mock(returncode=1 if failure=='exit' else 0,pid=123)
+    process.communicate.return_value=(json.dumps({'type':'item.completed','item':{'type':'command_execution'}}),'')
+    if failure=='timeout': process.communicate.side_effect=[subprocess.TimeoutExpired('codex',45),('','')]
+    launch=Mock(return_value=process); kill=Mock()
+    monkeypatch.setattr('cash_cow.paper.ai.subprocess.Popen',launch)
+    monkeypatch.setattr('cash_cow.paper.ai.os.killpg',kill)
+    if failure=='limit':
+        (tmp_path/'ai_subscription_usage.json').write_text(json.dumps({'2026-11-03':{'old':{'status':'failed'}}}))
+    with pytest.raises(ValueError): CodexAdvisor(cfg,tmp_path).evaluate(context(FakeAPI()),'new')
+    if failure=='timeout': kill.assert_called_once()
+    if failure=='limit': launch.assert_not_called()
