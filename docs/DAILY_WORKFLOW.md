@@ -74,6 +74,8 @@ The last commit contains the report and documents its own scope. Its hash cannot
 
 ## Current handoff
 
+November 4 follow-up: idle sleep interrupted the first US session, which is retained as a monitoring-gap incident with zero orders, not a valid full-session strategy observation. The deployed LaunchAgent now uses `caffeinate -i`; verify its actual macOS assertion along with the heartbeat. This prevents idle system sleep but does not cover closed-lid sleep, forced sleep or shutdown. The separately requested AI paper candidate is prepared and disabled pending a local OpenAI key, the user's API spending choice and an authenticated model preflight. Read [AI_PAPER_TRIAL.md](AI_PAPER_TRIAL.md). Do not enable it or replace the running baseline merely to meet the daily work target. Inspect the selected service configuration before choosing telemetry paths, and keep trial versions separate.
+
 On November 3: eight intraday variants have 236 historical pilot runs, with no 10% month in that pilot. Multi-year v4 is prepared, but no completed v4 pointer exists. The new paper runner uses a separately registered ORB30/VWAP strategy, USD 2,000 sleeve and IEX feed. Check actual process/account/journal status; initialization alone is not a completed session. Use `docs/DECISION_V3.md` for historical evidence and `docs/PAPER_RUNNER.md` for prospective operations. Never expose credentials.
 
 Schedule behavior reference: [official scheduled-task documentation](https://learn.chatgpt.com/docs/automations?surface=app).

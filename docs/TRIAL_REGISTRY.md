@@ -1,5 +1,12 @@
 # Research trial registry
 
+## paper_ai_v1 — prepared November 4, 2026; not activated
+
+- User clarified that the requested live AI decision loop should use Alpaca simulated funds. Prepared a separate model-proposal experiment; no model API call or AI-directed order has occurred at registration.
+- Model proposals use completed five-minute features, fresh quotes, timestamped news and event context. BUY/HOLD/EXIT replaces the ORB decision, while code retains the same execution/risk limits. Current model: GPT-6.1 Sol with low reasoning effort; prompt/config/source frozen on activation. Full protocol: `docs/AI_PAPER_TRIAL.md`.
+- Configuration is disabled with a zero API budget pending the user's API-key and spending-cap choice. Actual model validation and a flat-account service cutover are required before activation. Do not report fixture tests as authenticated model execution.
+- Initial quantitative baseline produced no orders in its first US session because of macOS sleep and a monitoring-gap block, not because it evaluated a full session and found no opportunities. Preserve the incident and do not claim either baseline or AI profitability.
+
 ## paper_orb30_v1 — prospective registration, 3 November 2026
 
 - User authorized a continuously running Alpaca paper trial, later adding quantitative plus qualitative/news research. Registered before any paper fills or strategy outcomes. This is a new engineering baseline, not a v3/v4 winner or a claim of positive edge.
