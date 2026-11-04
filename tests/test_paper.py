@@ -257,7 +257,9 @@ def test_end_of_day_closes_and_exports_real_fill_ledger(setup):
     assert row["closing_nav"] == pytest.approx(cash-cost)
     assert row["fees"] == pytest.approx(cost)
     assert "not broker fees" in report["cost_basis"]
-    assert "reconciled, flat" in write_report(runner.directory, CONFIG).read_text()
+    report_text = write_report(runner.directory, CONFIG).read_text()
+    assert "blocked: monitoring_gap" in report_text
+    assert "not evidence" in report_text
 
 
 def test_external_cash_and_manual_positions_halt(setup):

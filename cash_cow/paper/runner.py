@@ -89,15 +89,20 @@ def totals(state, capital):
 
 
 class Runner:
-    def __init__(self, client, config, directory, now=None):
+    def __init__(self, client, config, directory, now=None, decision_provider=None):
         validate_config(config)
         self.api, self.config = client, config
+        self.decision_provider = decision_provider
+        if config.get("ai") and (not config["ai"]["enabled"] or decision_provider is None):
+            raise ValueError("AI trial is not enabled with a configured decision provider")
         self.directory = Path(directory)
         self.directory.mkdir(parents=True, exist_ok=True)
         os.chmod(self.directory, 0o700)
         self.path = self.directory / "state.json"
         self.now = now or (lambda: datetime.now(timezone.utc))
         strategy_source = Path(__file__).with_name("strategy.py").read_bytes()
+        if config.get("ai"):
+            strategy_source += Path(__file__).with_name("ai.py").read_bytes()
         self.fingerprint = hashlib.sha256(json.dumps(config, sort_keys=True).encode() + strategy_source).hexdigest()
         self.state = json.loads(self.path.read_text()) if self.path.exists() else {
             "version": 1, "fingerprint": self.fingerprint, "orders": {}, "sessions": {},
@@ -197,7 +202,8 @@ class Runner:
         if qty <= 0:
             raise ValueError("Positive order quantity required")
         suffix = len(self.state["orders"]) + 1
-        cid = f"ccp1-{day.replace('-', '')}-{side}-{suffix}"
+        prefix = "ccai1" if self.config.get("ai") else "ccp1"
+        cid = f"{prefix}-{day.replace('-', '')}-{side}-{suffix}"
         payload = {"symbol": "SPY", "side": side, "qty": format(Decimal(str(qty)), 'f'),
                    "type": "limit" if side == "buy" else "market", "time_in_force": "day",
                    "extended_hours": False, "client_order_id": cid}
@@ -205,7 +211,8 @@ class Runner:
             price = Decimal(str(quote["ap"])) * (1 + Decimal(str(self.config["entry_limit_buffer_bps"])) / 10000)
             payload["limit_price"] = str(price.quantize(Decimal("0.01"), rounding=ROUND_CEILING))
         order = {"payload": payload, "created_at": iso(self.now()), "day": day,
-                 "reason": reason, "reference_quote": quote}
+                 "reason": reason, "reference_quote": quote,
+                 "ai_decision_id": self.state.get("active_ai_decision_id")}
         self.state["orders"][cid] = order
         # fsync before the network request: restart can recover the identical ID.
         self.save()
@@ -365,9 +372,21 @@ class Runner:
         self.event("observation", nav=nav, stress_nav=stress_nav, qty=qty, signal=observed)
         if not observed["ready"]:
             return self.event("warmup")
+        attempted = any(o["day"] == day and o["payload"]["side"] == "buy" for o in self.state["orders"].values())
+        if self.decision_provider and not qty and (attempted or now >= close - timedelta(minutes=self.config["entry_cutoff_minutes_before_close"])):
+            return self.event("no_entry")
+        if self.decision_provider:
+            # Slow model calls run off-thread; risk exits above never wait for AI.
+            proposal = self.decision_provider.decide(observed, quote, qty, stress_nav, day)
+            if proposal is None:
+                return self.event("ai_waiting_or_unavailable")
+            self.state["active_ai_decision_id"] = proposal["decision_id"]
+            self.event("ai_proposal", **proposal)
+            observed = dict(observed,
+                            enter=proposal["action"] == "BUY" and proposal["confidence"] >= self.config["ai"]["minimum_entry_confidence"],
+                            exit=proposal["action"] == "EXIT")
         if qty:
             return self.flatten(day, "strategy_exit") if observed["exit"] else self.event("holding")
-        attempted = any(o["day"] == day and o["payload"]["side"] == "buy" for o in self.state["orders"].values())
         if attempted or not observed["enter"] or now >= close - timedelta(minutes=self.config["entry_cutoff_minutes_before_close"]):
             return self.event("no_entry")
         if (close-session_open).total_seconds() != 390*60:
@@ -383,4 +402,4 @@ class Runner:
         shares = int((Decimal(str(max(0, budget - 1))) / limit).to_integral_value(rounding=ROUND_FLOOR))
         if not shares:
             return self.event("entry_blocked", reason="insufficient_cash_for_whole_share")
-        return self.submit(day, "buy", shares, "orb30_vwap", quote)
+        return self.submit(day, "buy", shares, "ai_proposal" if self.decision_provider else "orb30_vwap", quote)

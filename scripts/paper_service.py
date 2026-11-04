@@ -22,6 +22,7 @@ PLIST = Path.home() / "Library/LaunchAgents" / (LABEL + ".plist")
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("command", choices=("install", "status"))
+    parser.add_argument("--config", choices=("paper_v1", "paper_ai_v1"), default="paper_v1")
     args = parser.parse_args()
     target = f"gui/{os.getuid()}/{LABEL}"
     if args.command == "status":
@@ -31,7 +32,13 @@ def main():
         raise SystemExit("This installer supports macOS user LaunchAgents only")
     client = PaperClient()
     account, positions, orders = client.account(), client.positions(), client.open_orders()
-    config = json.loads((ROOT / "configs/paper_v1.json").read_text())
+    config = json.loads((ROOT / "configs" / (args.config + ".json")).read_text())
+    if config.get("ai"):
+        from cash_cow.paper.ai import read_openai_key, require_model_preflight
+        if not config["ai"]["enabled"] or config["ai"]["daily_budget_usd"] <= 0:
+            raise SystemExit("AI trial requires an approved positive API budget and enabled configuration")
+        read_openai_key(ROOT)
+        require_model_preflight(config, ROOT / "data/telemetry/paper_ai_v1")
     if account.get("status") != "ACTIVE" or any(account.get(k) for k in ("trading_blocked", "account_blocked", "trade_suspended_by_user")):
         raise SystemExit("Paper account is blocked or inactive")
     if positions or orders or float(account["cash"]) < config["capital"]:
@@ -39,7 +46,7 @@ def main():
     client.quote(config["feed"])
     logs = ROOT / ".local/paper"
     logs.mkdir(parents=True, exist_ok=True)
-    spec = {"Label": LABEL, "ProgramArguments": ["/usr/bin/caffeinate", "-i", str(ROOT / ".venv/bin/python"), "-u", "-m", "cash_cow.paper", "run"],
+    spec = {"Label": LABEL, "ProgramArguments": ["/usr/bin/caffeinate", "-i", str(ROOT / ".venv/bin/python"), "-u", "-m", "cash_cow.paper", "run", "--config", args.config],
             "WorkingDirectory": str(ROOT), "RunAtLoad": True,
             "KeepAlive": {"SuccessfulExit": False}, "ThrottleInterval": 60,
             "StandardOutPath": str(logs / "runner.log"), "StandardErrorPath": str(logs / "error.log"),
