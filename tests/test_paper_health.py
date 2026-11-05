@@ -59,3 +59,11 @@ def test_missing_state_is_review_required(tmp_path):
     r=audit(tmp_path,NOW)
     assert r['status']=='review_required'
     assert 'unreadable:state.json' in r['issues']
+
+
+def test_recovered_collector_does_not_erase_reported_coverage_gap(tmp_path):
+    fixture(tmp_path)
+    p=tmp_path/'news/status.json';n=json.loads(p.read_text());n['coverage_gap']=True;p.write_text(json.dumps(n))
+    r=audit(tmp_path,NOW)
+    assert r['news_fresh'] and 'news_coverage_gap' in r['issues']
+    assert r['status']=='review_required'

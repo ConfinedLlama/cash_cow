@@ -64,6 +64,8 @@ def audit(directory, now=None):
         issues.append("news_window_truncated")
     # The last saved gap flag cannot establish present coverage after an outage.
     news_gap = news_age is None or news_age < 0 or news_age > 900 or bool(news.get("coverage_gap"))
+    if news_gap:
+        issues.append("news_coverage_gap")
 
     events, malformed = [], 0
     try:
