@@ -1,6 +1,6 @@
 # Alpaca prospective paper runner
 
-Authorized November 3, 2026. This is an engineering and prospective research trial, not an approved funded strategy. Paper orders use **only** `https://paper-api.alpaca.markets/v2`; market data uses `https://data.alpaca.markets`. No configurable live URL exists. The runner is deterministic Python; an LLM does not make per-order decisions.
+Authorized November 3, 2026. This is an engineering and prospective research trial, not an approved funded strategy. Paper orders use **only** `https://paper-api.alpaca.markets/v2`; market data uses `https://data.alpaca.markets`. No configurable live URL exists. The original `paper_v1` strategy described below is deterministic and is now stopped. Since November 4 the service selects `paper_ai_v1`, whose model proposals pass through the same deterministic execution/risk controls. See [AI_PAPER_TRIAL.md](AI_PAPER_TRIAL.md) for its frozen protocol.
 
 ## Frozen first experiment
 
@@ -40,12 +40,16 @@ Incident on the November 3 US session: the Mac entered idle sleep at 22:30:41 Si
 ```sh
 # Inspect service and journal status:
 .venv/bin/python scripts/paper_service.py status
-.venv/bin/python -m cash_cow.paper status
+.venv/bin/python -m cash_cow.paper status --config paper_ai_v1
 # Request safe stop, cancellation and regular-session flattening:
-.venv/bin/python -m cash_cow.paper stop
+.venv/bin/python -m cash_cow.paper stop --config paper_ai_v1
 # Refresh the private human-readable performance report:
-.venv/bin/python -m cash_cow.paper report
+.venv/bin/python -m cash_cow.paper report --config paper_ai_v1
 ```
+
+For the active version, run `.venv/bin/python -m cash_cow.paper.health` to audit heartbeat age, news freshness, nonterminal intents and session event gaps. Run `.venv/bin/python -m cash_cow.paper.news_audit` to verify stored revision hashes and causal timestamps; `--as-of` accepts a timezone-aware cutoff. Both commands are read-only, make no broker/model calls and emit sanitized aggregates. Exit 2 means review is needed, not permission to reset state. A fresh heartbeat does not erase a blocked session or establish broker reconciliation. News integrity does not establish comprehensive coverage. Separately verify actual broker positions/orders, process ownership and the caffeinate assertion.
+
+November 4 session incident: power logs show Clamshell Sleep at 21:46:45 Singapore before the US open, and again at 00:18:39 November 5. The runner first observed the session around 23:11:59 Singapore and blocked it for a monitoring gap. No AI proposals or orders occurred. The idle-sleep assertion remained active; it cannot prevent lid-closure sleep. Keep the lid open and maintain power/network, or separately plan an always-on host. Do not weaken the monitoring-gap guard to manufacture trades.
 
 The STOP file is persistent and the process exits only after confirmed flat/no pending orders during its normal loop. Closed markets or unresolved orders can delay completion. Verify in the paper dashboard before unloading the service. Do not kill a process and assume this canceled broker orders. After a safe stop, restarting requires deliberate removal of STOP and `launchctl kickstart gui/$(id -u)/com.cashcow.paper`; inspect state first. `run --once` is an execution tick, not a dry run, and must not be run while the service owns its lock.
 
