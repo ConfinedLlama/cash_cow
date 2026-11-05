@@ -192,6 +192,13 @@ class Runner:
         session = self.state["sessions"].get(day)
         if session and timestamp(session["close"]) - broker_now < timedelta(seconds=45):
             return self.event("needs_attention", reason="Too close to closing to submit safely; verify paper inventory")
+        if side == "buy":
+            # Network/model work can outlive a quote or cross the entry cutoff.
+            if session and broker_now >= timestamp(session["close"]) - timedelta(minutes=self.config["entry_cutoff_minutes_before_close"]):
+                return self.event("entry_blocked", reason="entry_cutoff_before_submission")
+            age = (self.now() - timestamp(quote["t"])).total_seconds()
+            if not -5 <= age <= self.config["max_quote_age_seconds"]:
+                return self.event("entry_blocked", reason="quote_expired_before_submission", quote_age_seconds=age)
         if self.pending():
             raise ValueError("Cannot submit while another intent is unresolved")
         current = totals(self.state, self.config["capital"])[1]
@@ -336,15 +343,19 @@ class Runner:
             return self.flatten(day, session["blocked"])
         if not qty and now < session_open + timedelta(minutes=35):
             return self.event("warmup")
+        quote_age = None
         try:
             quote = self.api.quote(self.config["feed"])
             bid, ask = number(quote["bp"]), number(quote["ap"])
-            age = (now - timestamp(quote["t"])).total_seconds()
-            if not 0 < bid <= ask or not -5 <= age <= self.config["max_quote_age_seconds"]:
+            # Tick-start time precedes several HTTP calls. Use receipt time so
+            # a valid current quote is not misclassified as future-dated.
+            quote_age = (self.now() - timestamp(quote["t"])).total_seconds()
+            if not 0 < bid <= ask or not -5 <= quote_age <= self.config["max_quote_age_seconds"]:
                 raise ValueError("Stale or invalid quote")
-        except (ValueError, APIError, TransportError, KeyError):
+        except (ValueError, APIError, TransportError, KeyError) as error:
             session["blocked"] = "stale_or_unavailable_quote"
-            return self.flatten(day, "data_failure") if qty else self.event("entry_blocked", reason=session["blocked"])
+            self.event("quote_failure", error_type=type(error).__name__, quote_age_seconds=quote_age)
+            return self.flatten(day, "data_failure") if qty else self.event("entry_blocked", reason=session["blocked"], error_type=type(error).__name__, quote_age_seconds=quote_age)
         nav = cash + qty * bid
         stress_nav = nav - cost
         session["minimum_observed_nav"] = min(session.get("minimum_observed_nav", nav), nav)

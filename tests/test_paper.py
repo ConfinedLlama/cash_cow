@@ -318,3 +318,51 @@ def test_last_seconds_do_not_queue_next_day_exit(setup):
 def test_unsafe_configuration_rejected(tmp_path, update):
     with pytest.raises(ValueError):
         Runner(FakeAPI(), dict(CONFIG, **update), tmp_path)
+
+
+def test_fresh_quote_after_slow_account_reads_is_not_future_dated(setup):
+    api, runner = setup
+    original = api.account
+    def delayed_account():
+        api.now += timedelta(seconds=4)
+        return original()
+    api.account = delayed_account
+    assert runner.tick()['kind'] == 'order_submitted'
+    assert not runner.state['sessions']['2026-11-03']['blocked']
+
+
+def test_quote_expiring_during_asset_request_cannot_submit(setup):
+    api, runner = setup
+    def delayed_asset():
+        api.now += timedelta(seconds=65)
+        return {'tradable': True, 'status': 'active'}
+    api.asset = delayed_asset
+    result = runner.tick()
+    assert result['kind'] == 'entry_blocked'
+    assert result['reason'] == 'quote_expired_before_submission'
+    assert not api.submissions
+
+
+def test_entry_cutoff_crossed_during_asset_request_cannot_submit(setup, monkeypatch):
+    api, runner = setup
+    monkeypatch.setattr('cash_cow.paper.runner.signal', lambda *args: {'ready': True, 'enter': True, 'exit': False, 'bar': 'fixture'})
+    api.now = api.now.replace(hour=14, minute=59, second=55)
+    def delayed_asset():
+        api.now += timedelta(seconds=10)
+        return {'tradable': True, 'status': 'active'}
+    api.asset = delayed_asset
+    result = runner.tick()
+    assert result['kind'] == 'entry_blocked'
+    assert result['reason'] == 'entry_cutoff_before_submission'
+    assert not api.submissions
+
+
+def test_quote_failure_records_sanitized_detail_and_keeps_session_block(setup):
+    api, runner = setup
+    api.stale_quote = True
+    result = runner.tick()
+    assert result['quote_age_seconds'] == 300
+    assert result['error_type'] == 'ValueError'
+    api.stale_quote = False
+    assert runner.tick()['kind'] == 'flat'
+    assert not api.submissions

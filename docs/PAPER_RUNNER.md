@@ -89,3 +89,37 @@ Funded execution needs a separately implemented broker adapter, broker-specific 
 - [Minute bars](https://docs.alpaca.markets/us/reference/stockbars), [quotes](https://docs.alpaca.markets/us/reference/stocklatestquotes-1), [news](https://docs.alpaca.markets/us/reference/news-3)
 - [BLS November](https://www.bls.gov/schedule/2026/11_sched.htm), [BLS December](https://www.bls.gov/schedule/2026/12_sched.htm), [Fed meetings](https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm)
 - [IBKR Singapore funding](https://www.interactivebrokers.com.sg/en/support/fund-my-account.php), [API solutions](https://www.interactivebrokers.com.sg/en/trading/ib-api.php)
+
+## November 6 Singapore: quote-timing execution correction
+
+Interactive investigation of the November 5 US session found 16 completed AI
+proposals, all HOLD, and zero journaled orders; a fresh read-only broker check
+confirmed zero positions and open orders. Entries became blocked at
+16:32:29 UTC with `stale_or_unavailable_quote`. The old event did not preserve
+quote age or exception type, so the precise cause of that incident cannot be
+proven retrospectively. Network errors and a clock-discrepancy event were also
+observed. These are incomplete-session observations, not performance evidence.
+
+An execution defect was reproduced with synthetic latency: quote age used the
+start of a tick, before multiple sequential HTTP requests. Two four-second
+account requests caused a genuinely fresh quote to appear eight seconds in the
+future and trip the five-second tolerance. The correction uses receipt time,
+retains the 60-second freshness limit and five-second future tolerance, and
+records sanitized failure type and measured age. A fresh pre-submission check
+also rejects quotes that expire during later work and entries crossing the
+existing session cutoff. It does not change the frozen AI prompt, model,
+configuration, position sizing, cost assumptions, or decision thresholds.
+
+This is an execution-code revision of `paper_ai_v1`, recorded by its Git commit,
+not a new strategy or a reset of the trial. Existing session blocks, proposals,
+usage, orders and losses remain intact. New sessions follow the original rules;
+no automatic data-failure recovery or forced BUY has been added. For deployment,
+request a safe stop, verify the `stopped` event and broker flat/no open orders,
+then remove only the deliberate STOP marker and restart the same service.
+Never delete state to resume a blocked day. Preserve the revision boundary when
+interpreting prospective results. Historical holdout data was not accessed.
+
+Validation: four regression tests cover delayed quote receipt, quote expiry
+before submission, crossing the entry cutoff, and sanitized diagnostics with
+persistent session blocking. The complete suite passed: 140 tests. Test orders
+are synthetic fixtures and were never sent to Alpaca.
