@@ -49,6 +49,15 @@ Incident on the November 3 US session: the Mac entered idle sleep at 22:30:41 Si
 
 For the active version, run `.venv/bin/python -m cash_cow.paper.health` to audit heartbeat age, news freshness, nonterminal intents and session event gaps. Run `.venv/bin/python -m cash_cow.paper.news_audit` to verify stored revision hashes and causal timestamps; `--as-of` accepts a timezone-aware cutoff. Both commands are read-only, make no broker/model calls and emit sanitized aggregates. Exit 2 means review is needed, not permission to reset state. A fresh heartbeat does not erase a blocked session or establish broker reconciliation. News integrity does not establish comprehensive coverage. Separately verify actual broker positions/orders, process ownership and the caffeinate assertion.
 
+Run `.venv/bin/python -m cash_cow.paper.decision_audit` to distinguish unique
+saved decisions from repeated `ai_proposal` polling events. It checks packet and
+consumption timestamps, news causality, subscription-ledger matches and unresolved
+attempts, and separates preflight/diagnostic calls from market packets. Outputs
+contain sanitized aggregates and a source manifest hash, not headlines or model
+rationales. This is read-only; exit 2 requests review. Files are read separately,
+so repeat an apparent mismatch if the service was writing. Reported token fields
+may overlap and are not dollar costs; a cited headline does not establish causation.
+
 November 4 session incident: power logs show Clamshell Sleep at 21:46:45 Singapore before the US open, and again at 00:18:39 November 5. The runner first observed the session around 23:11:59 Singapore and blocked it for a monitoring gap. No AI proposals or orders occurred. The idle-sleep assertion remained active; it cannot prevent lid-closure sleep. Keep the lid open and maintain power/network, or separately plan an always-on host. Do not weaken the monitoring-gap guard to manufacture trades.
 
 The STOP file is persistent and the process exits only after confirmed flat/no pending orders during its normal loop. Closed markets or unresolved orders can delay completion. Verify in the paper dashboard before unloading the service. Do not kill a process and assume this canceled broker orders. After a safe stop, restarting requires deliberate removal of STOP and `launchctl kickstart gui/$(id -u)/com.cashcow.paper`; inspect state first. `run --once` is an execution tick, not a dry run, and must not be run while the service owns its lock.
