@@ -5,13 +5,27 @@ Exit 2 means an operational issue requires review, not a command to reset state.
 """
 import argparse
 from collections import Counter
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 import hashlib
 import json
 from pathlib import Path
 
 from .client import timestamp
 from .runner import TERMINAL
+
+EVENT_KINDS = {
+    'needs_attention', 'flat', 'market_closed', 'warmup', 'stopped',
+    'order_submitted', 'submission_uncertain', 'waiting_for_cancel',
+    'waiting_for_fill', 'observation', 'ai_waiting_or_unavailable',
+    'ai_proposal', 'no_entry', 'entry_blocked', 'holding', 'quote_failure',
+}
+
+
+def valid_day(value):
+    try:
+        return isinstance(value, str) and date.fromisoformat(value).isoformat() == value
+    except ValueError:
+        return False
 
 
 def age_seconds(value, now):
@@ -28,6 +42,18 @@ def audit(directory, now=None):
     if now.tzinfo is None:
         raise ValueError("Audit time must include timezone")
     issues, hashes = [], {}
+
+    def object_value(value, label):
+        if not isinstance(value, dict):
+            issues.append('invalid_object:' + label)
+            return {}
+        return value
+
+    def event_kind(value):
+        if not isinstance(value, str) or value not in EVENT_KINDS:
+            issues.append('unknown_event_kind')
+            return 'unknown'
+        return value
 
     def read(name, optional=False):
         path = directory / name
@@ -46,11 +72,12 @@ def audit(directory, now=None):
 
     state = read("state.json")
     news = read("news/status.json")
-    last = state.get("last_event", {})
+    last = object_value(state.get("last_event"), 'last_event')
+    last_kind = event_kind(last.get('kind')) if last else None
     age = age_seconds(last.get("at"), now)
     if age is None or age < 0 or age > 120:
         issues.append("runner_heartbeat_missing_stale_or_future")
-    if last.get("kind") == "needs_attention":
+    if last_kind == "needs_attention":
         issues.append("runner_needs_attention")
     if state.get("halt"):
         issues.append("runner_halted")
@@ -77,7 +104,7 @@ def audit(directory, now=None):
                 at = timestamp(event["at"])
                 if not isinstance(event["kind"], str) or at > now:
                     raise ValueError("Invalid event")
-                events.append((at, event["kind"]))
+                events.append((at, event_kind(event["kind"])))
             except (ValueError, KeyError, TypeError, AttributeError):
                 malformed += 1
     except OSError:
@@ -89,8 +116,16 @@ def audit(directory, now=None):
     events.sort(key=lambda row: row[0])
 
     sessions = {}
-    for day, session in state.get("sessions", {}).items():
+    for day, session in object_value(state.get("sessions"), 'sessions').items():
+        if not valid_day(day):
+            issues.append('invalid_session_date')
+            continue
         try:
+            if not isinstance(session, dict) or any(
+                key in session and not isinstance(session[key], bool)
+                for key in ('closed', 'partial_attendance', 'unresolved_at_close')
+            ):
+                raise ValueError('Invalid session shape')
             opened, closed = timestamp(session["open"]), timestamp(session["close"])
             if closed <= opened or opened > now:
                 raise ValueError("Invalid session interval")
@@ -110,17 +145,37 @@ def audit(directory, now=None):
                 issues.append("session_requires_coverage_review:" + day)
         except (ValueError, KeyError, TypeError, AttributeError):
             issues.append("invalid_session_interval:" + day)
-    orders = state.get("orders", {})
-    pending = sum(o.get("broker", {}).get("status") not in TERMINAL for o in orders.values())
+    raw_orders = state.get('orders')
+    orders = object_value(raw_orders, 'orders')
+    pending = 0 if isinstance(raw_orders, dict) else None
+    for order in orders.values():
+        if not isinstance(order, dict) or not isinstance(order.get('broker', {}), dict):
+            issues.append('invalid_order_record')
+            pending += 1
+            continue
+        status = order.get('broker', {}).get('status')
+        pending += not isinstance(status, str) or status not in TERMINAL
     if pending:
         issues.append("nonterminal_order_intents")
     usage = read("ai_subscription_usage.json", optional=True)
-    usage_counts = {day: dict(Counter(v.get("status", "unknown") for v in attempts.values()))
-                    for day,attempts in usage.items()}
+    usage_counts = {}
+    for day, attempts in usage.items():
+        if not valid_day(day):
+            issues.append('invalid_usage_date')
+            continue
+        counts = Counter()
+        for value in object_value(attempts, 'usage_attempts').values():
+            status = value.get('status') if isinstance(value, dict) else None
+            if not isinstance(status, str) or status not in {'pending', 'failed', 'completed'}:
+                issues.append('invalid_usage_status')
+                status = 'unknown'
+            counts[status] += 1
+        usage_counts[day] = dict(counts)
+    issues = list(dict.fromkeys(issues))
     return {"as_of": now.isoformat(), "status": "review_required" if issues else "no_local_issue_detected",
-            "issues": issues, "heartbeat_age_seconds": age, "last_event_kind": last.get("kind"),
+            "issues": issues, "heartbeat_age_seconds": age, "last_event_kind": last_kind,
             "news_age_seconds": news_age, "news_fresh": news_fresh, "news_coverage_gap_now": news_gap,
-            "order_intents": len(orders), "nonterminal_order_intents": pending,
+            "order_intents": len(orders) if isinstance(raw_orders, dict) else None, "nonterminal_order_intents": pending,
             "sessions": sessions, "subscription_attempts": usage_counts,
             "malformed_or_future_events": malformed, "source_sha256": hashes,
             "limits": "Local files only; broker reconciliation, process ownership and power assertions require separate checks. Event density is not successful market-data or signal coverage. Files are read separately while the service may write."}

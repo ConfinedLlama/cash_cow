@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta, timezone
 import json
+import pytest
 
 from cash_cow.paper.health import audit
 
@@ -67,3 +68,51 @@ def test_recovered_collector_does_not_erase_reported_coverage_gap(tmp_path):
     r=audit(tmp_path,NOW)
     assert r['news_fresh'] and 'news_coverage_gap' in r['issues']
     assert r['status']=='review_required'
+
+
+@pytest.mark.parametrize('field', ['last_event', 'sessions', 'orders'])
+@pytest.mark.parametrize('bad', [None, [], 'private-secret'])
+def test_nested_bad_state_fails_review_without_crash_or_disclosure(tmp_path, field, bad):
+    state = fixture(tmp_path)
+    state[field] = bad
+    (tmp_path/'state.json').write_text(json.dumps(state))
+    result = audit(tmp_path, NOW)
+    assert 'invalid_object:' + field in result['issues']
+    assert result['status'] == 'review_required'
+    assert 'private-secret' not in json.dumps(result)
+    if field == 'orders':
+        assert result['order_intents'] is None
+        assert result['nonterminal_order_intents'] is None
+
+
+def test_unknown_order_schemas_are_unresolved_not_zero(tmp_path):
+    state = fixture(tmp_path)
+    state['orders'] = {'a': None, 'b': {'broker': []}, 'c': {'broker': {'status': []}}}
+    (tmp_path/'state.json').write_text(json.dumps(state))
+    result = audit(tmp_path, NOW)
+    assert result['nonterminal_order_intents'] == 3
+    assert 'invalid_order_record' in result['issues']
+
+
+def test_untrusted_labels_and_nested_usage_are_not_published(tmp_path):
+    state = fixture(tmp_path)
+    state['last_event']['kind'] = 'private-secret'
+    state['sessions'] = {'private-day': {}, '2026-11-04': None}
+    (tmp_path/'state.json').write_text(json.dumps(state))
+    (tmp_path/'events.jsonl').write_text(json.dumps(state['last_event']))
+    (tmp_path/'ai_subscription_usage.json').write_text(json.dumps({
+        'private-day': {}, '2026-11-04': [],
+        '2026-11-05': {'a': None, 'b': {'status': ['private-secret']}}
+    }))
+    result = audit(tmp_path, NOW)
+    assert result['last_event_kind'] == 'unknown'
+    assert result['subscription_attempts']['2026-11-05'] == {'unknown': 2}
+    assert 'private-' not in json.dumps(result)
+    assert result['status'] == 'review_required'
+
+
+def test_string_boolean_cannot_establish_closed_session(tmp_path):
+    state = fixture(tmp_path)
+    state['sessions'] = {'2026-11-04': {'closed': 'true'}}
+    (tmp_path/'state.json').write_text(json.dumps(state))
+    assert 'invalid_session_interval:2026-11-04' in audit(tmp_path, NOW)['issues']
