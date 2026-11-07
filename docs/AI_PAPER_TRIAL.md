@@ -52,4 +52,21 @@ Offline tests cover malformed actions/citations, confidence values, structured o
 
 The preceding US session had no orders because the Mac slept and triggered a monitoring-gap block. Preserve it as an operational incident. The corrected report labels blocked sessions explicitly and retains their actual sleeve returns, including losses; it does not erase bad days or imply a complete strategy evaluation.
 
+### Fixed trial attendance audit
+
+`python -m cash_cow.paper.attendance --calendar PATH --start 2026-11-04`
+checks the original 20 scheduled sessions against a separately fetched exchange
+calendar snapshot. Store that snapshot privately with `source` equal to
+`Alpaca GET /v2/calendar`, ISO `start`, `end`, timezone-aware `fetched_at`, and
+the returned rows in `sessions` (`date`, `open`, `close`). Fetch enough calendar
+rows to cover the full fixed trial; do not replace missed days with later ones.
+The November 7 calendar observation places session 20 on December 2 and includes
+the shortened November 27 session. Reverify schedule changes explicitly.
+
+The command performs no network calls or writes. It reports missing, incomplete,
+in-progress and future sessions separately, checks local exchange intervals and
+flags concurrent state changes. An event stream without local attendance issues
+is not proof of successful data coverage, broker reconciliation or profitability.
+It computes no returns. Exit 2 means review, never authorization to reset state.
+
 Official references: [Codex subscription authentication](https://learn.chatgpt.com/docs/auth), [Non-interactive mode and structured output](https://learn.chatgpt.com/docs/non-interactive-mode), [Structured Outputs](https://developers.openai.com/api/docs/guides/structured-outputs), [GPT-6.1 Sol capabilities and pricing](https://developers.openai.com/api/docs/models/gpt-6.1-sol).
