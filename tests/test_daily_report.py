@@ -82,3 +82,77 @@ def test_research_pointer_cannot_escape_repo(tmp_path):
     (tmp_path / "reports/LATEST_V3.txt").write_text("../../secrets")
     with pytest.raises(ValueError):
         research_status(tmp_path)
+
+
+def coverage_files(tmp_path, observations):
+    observations['strategy_id'] = 'frozen_v1_cost_stress'
+    state = {'sessions': {r['session_date']: {
+        'opening_stress_nav': r['opening_nav'], 'closing_stress_nav': r['closing_nav'],
+        'modeled_costs': r['fees'], 'closed': True, 'partial_attendance': False,
+        'blocked': None,
+    } for r in observations['sessions']}}
+    p, s = tmp_path/'sessions.json', tmp_path/'state.json'
+    p.write_text(json.dumps(observations)); s.write_text(json.dumps(state))
+    return p, s, state
+
+
+def test_missing_coverage_is_unverified_even_for_flat_returns(tmp_path, observations):
+    result = load(tmp_path, observations)
+    assert result['coverage']['counts'] == {'unverified': 2}
+    assert result['coverage']['state_sha256'] is None
+
+
+@pytest.mark.parametrize('flags', [
+    {'blocked': 'private-reason'}, {'partial_attendance': True},
+    {'closed': False}, {'unresolved_at_close': True},
+])
+def test_incomplete_loss_retained_and_reason_sanitized(tmp_path, observations, flags):
+    p, s, state = coverage_files(tmp_path, observations)
+    state['sessions']['2026-11-02'].update(flags); s.write_text(json.dumps(state))
+    before = (p.read_bytes(), s.read_bytes())
+    result = load_performance(p, date(2026,11,3), s)
+    assert result['coverage']['counts'] == {'no_local_block_recorded': 1, 'incomplete': 1}
+    assert result['observed_net_pnl'] == -20
+    assert result['sessions'] == 2
+    assert 'private-reason' not in json.dumps(result)
+    assert before == (p.read_bytes(), s.read_bytes())
+
+
+@pytest.mark.parametrize('field,value', [
+    ('opening_stress_nav', 999), ('closing_stress_nav', float('nan')),
+    ('modeled_costs', True), ('closed', 'false'), ('partial_attendance', None),
+    ('unresolved_at_close', 1), ('blocked', []),
+])
+def test_mismatched_or_malformed_coverage_fails_closed(tmp_path, observations, field, value):
+    p, s, state = coverage_files(tmp_path, observations)
+    state['sessions']['2026-11-02'][field] = value; s.write_text(json.dumps(state))
+    with pytest.raises(ValueError):
+        load_performance(p, date(2026,11,3), s)
+
+
+def test_missing_session_cannot_be_silently_dropped(tmp_path, observations):
+    p, s, state = coverage_files(tmp_path, observations)
+    del state['sessions']['2026-11-02']; s.write_text(json.dumps(state))
+    with pytest.raises(ValueError, match='missing'):
+        load_performance(p, date(2026,11,3), s)
+
+
+def test_live_source_cannot_be_joined_to_paper_state(tmp_path, observations):
+    p, s, state = coverage_files(tmp_path, observations)
+    observations['mode'] = 'live'; p.write_text(json.dumps(observations))
+    with pytest.raises(ValueError, match='paper cost-stress'):
+        load_performance(p, date(2026,11,3), s)
+
+
+def test_rendered_report_exposes_incomplete_sessions(tmp_path, observations, monkeypatch):
+    import cash_cow.daily_report as module
+    monkeypatch.setattr(module, 'commits_for_day', lambda *_: [])
+    monkeypatch.setattr(module, 'git', lambda *_: 'fixture')
+    p, s, state = coverage_files(tmp_path, observations)
+    state['sessions']['2026-11-02']['blocked'] = 'monitoring_gap'; s.write_text(json.dumps(state))
+    report = render_report(tmp_path, date(2026,11,3), load_performance(p, date(2026,11,3), s))
+    assert '| 2026-11-02 | incomplete |' in report
+    assert 'Observed net P&L: -20.00' in report
+    assert 'Full-month statistics remain unavailable' in report
+    unknown = render_report(tmp_path, date(2026,11,3), load_performance(p, date(2026,11,3)))
+    assert 'every observed session is **unverified**' in unknown

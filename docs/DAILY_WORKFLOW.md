@@ -49,7 +49,18 @@ Generate a draft with:
 .venv/bin/python -m cash_cow.daily_report
 # Optional only when authentic, reconciled session observations are available:
 .venv/bin/python -m cash_cow.daily_report --observations data/telemetry/sessions.json
+# For the active paper cost-stress export, retain its local coverage flags:
+.venv/bin/python -m cash_cow.daily_report --observations data/telemetry/paper_ai_v1/sessions.json --coverage-state data/telemetry/paper_ai_v1/state.json
 ```
+
+The optional coverage join matches each exported date, cost-stressed opening/
+closing NAV and modeled cost to private state. Mismatches fail instead of
+silently joining inconsistent snapshots. It labels incomplete sessions without
+discarding their losses; without state, all rows remain unverified. A row with
+no local block is not certified complete: run the separate calendar/event
+attendance audit and independently verify account/strategy identity. The join
+does not establish full-month coverage or recompute metrics on a cherry-picked
+subset. It reads files only and does not modify the running exporter.
 
 The tool writes `reports/daily/YYYY-MM-DD.md` once and refuses accidental overwrite. It reads Git/history and supplied evidence; it does not execute trades or push code. Complete every PENDING review item before committing. Do not treat a stored verification file as a newly run experiment.
 
