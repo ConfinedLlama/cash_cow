@@ -49,6 +49,15 @@ Incident on the November 3 US session: the Mac entered idle sleep at 22:30:41 Si
 
 For the active version, run `.venv/bin/python -m cash_cow.paper.health` to audit heartbeat age, news freshness, nonterminal intents and session event gaps. Run `.venv/bin/python -m cash_cow.paper.news_audit` to verify stored revision hashes and causal timestamps; `--as-of` accepts a timezone-aware cutoff. Both commands are read-only, make no broker/model calls and emit sanitized aggregates. Exit 2 means review is needed, not permission to reset state. A fresh heartbeat does not erase a blocked session or establish broker reconciliation. News integrity does not establish comprehensive coverage. Separately verify actual broker positions/orders, process ownership and the caffeinate assertion.
 
+Before each session, `.venv/bin/python -m cash_cow.paper.readiness` checks the
+installed and loaded service arguments, worker process, its own caffeinate
+assertion, external power and STOP flag. It makes only read-only macOS queries,
+emits sanitized fields, and returns exit 2 for a mismatch or unavailable check.
+Battery power requires attention even if the heartbeat is fresh. Passing these
+local checks cannot guarantee future uptime or an open lid and does not verify
+broker reconciliation, network availability, loaded code identity or data freshness.
+Pair it with the health and attendance audits; never use it to clear a session block.
+
 Malformed nested state is a review failure, not an empty account. An unreadable
 order collection produces unknown (`null`) counts; malformed individual orders
 remain unresolved. Unknown event/status labels and invalid date keys are
