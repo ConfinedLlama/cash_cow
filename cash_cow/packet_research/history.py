@@ -43,7 +43,8 @@ def history_features(snapshot, context):
     used = []
     for i, row in enumerate(rows):
         at = timestamp(row['t'])
-        if at != opened+timedelta(minutes=i) or at+timedelta(minutes=1) > cutoff:
+        if (at != opened+timedelta(minutes=i)
+                or at+timedelta(minutes=1) > min(cutoff, observed)):
             raise ValueError('missing_unordered_or_future_bar')
         values = [row[k] for k in ('o', 'h', 'l', 'c', 'v')]
         if any(isinstance(v, bool) or not isinstance(v, (int, float))

@@ -60,3 +60,9 @@ def test_minutes_after_feature_bar_do_not_change_feature_values():
 def test_timezone_offset_changes_do_not_shift_session_minutes():
     s,c=inputs();c['as_of']='2026-11-05T10:05:02-05:00'
     assert history_features(s,c)['close_returns']['5']==pytest.approx(135/130-1)
+
+
+def test_snapshot_cannot_claim_a_minute_completed_after_its_own_observation():
+    s,c=inputs();s['observed_at']='2026-11-05T15:04:59Z'
+    with pytest.raises(ValueError,match='future_bar'):
+        history_features(s,c)
