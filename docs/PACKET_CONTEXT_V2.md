@@ -67,6 +67,19 @@ benchmark bars stay missing. Nothing here promises 10% monthly or proves an edge
 
 ## Promotion criteria and current limit
 
+Run the offline construction diagnostic with:
+
+```sh
+.venv/bin/python -m cash_cow.packet_research.replay --directory data/telemetry/paper_ai_v1 --releases PATH_TO_PRIVATE_RELEASE_ARCHIVE
+```
+
+Omit `--releases` to label outcomes unavailable. It prints only aggregate counts
+and hashes, makes no network/model calls and writes nothing. Keep any redirected
+output in ignored local evidence. The source hash on a manually entered release
+identifies the saved evidence capture: retain its capture method separately.
+A web-tool rendering is not the original HTTP document. A dated official URL and
+hash do not alone authenticate the value; review the source and units explicitly.
+
 Fixture tests and archive diagnostics must pass with source integrity checks,
 but passing is only an implementation gate. No decision threshold or history
 window is tuned based on BUY count or P&L. Deployment requires a documented new
