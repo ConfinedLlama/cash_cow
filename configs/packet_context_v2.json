@@ -1,0 +1,19 @@
+{
+  "version": "packet_context_v2",
+  "status": "offline_only",
+  "execution_enabled": false,
+  "baseline": "paper_ai_v1",
+  "symbol": "SPY",
+  "feed": "iex",
+  "return_lags_minutes": [5, 15, 30],
+  "history_bars": 6,
+  "bar_minutes": 5,
+  "max_snapshot_age_seconds": 120,
+  "max_release_age_days": 7,
+  "max_packet_bytes": 20000,
+  "arms": ["baseline", "history", "history_and_releases"],
+  "capital_usd": 2000,
+  "allocation": 0.95,
+  "cost_stress": {"minimum_per_order_usd": 0.40, "per_share_usd": 0.0035, "per_order_bps": 2},
+  "prospective_sessions": 20
+}

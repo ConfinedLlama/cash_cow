@@ -1,5 +1,15 @@
 # Research trial registry
 
+## packet_context_v2 — registered November 9, 2026; offline only
+
+The [frozen input protocol](PACKET_CONTEXT_V2.md) and
+`configs/packet_context_v2.json` define price-history and official-release input
+arms motivated by missing context in prior HOLD explanations. Existing November
+5–6 records are development diagnostics, not an untouched holdout. First phase
+does no model calls or orders and measures construction/causality only. Current
+paper_ai_v1 remains selected. Costs, leakage controls, rejection rules and a
+separate future prospective comparison are specified before candidate results.
+
 ## paper_ai_v1 — activated November 4, 2026, before the US open
 
 - User clarified that the requested live AI decision loop should use Alpaca simulated funds. Prepared a separate model-proposal experiment; no model API call or AI-directed order has occurred at registration.
