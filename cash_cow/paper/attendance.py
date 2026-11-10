@@ -104,7 +104,8 @@ def audit(directory, snapshot, start, count=20, now=None):
             except (KeyError, TypeError, ValueError, AttributeError):
                 reasons.append('invalid_local_session')
             status = 'incomplete' if reasons else 'no_local_attendance_issue'
-        rows.append({'date': day, 'status': status, 'reasons': reasons})
+        rows.append({'date': day, 'status': status, 'reasons': reasons,
+                     'event_coverage': health['sessions'].get(day, {}).get('event_coverage')})
     counts = Counter(row['status'] for row in rows)
     elapsed = sum(now >= closed for _, _, closed in expected)
     if any(counts[k] for k in ('missing', 'incomplete', 'unverifiable')):

@@ -36,6 +36,43 @@ def test_session_endpoints_reveal_missed_open_and_no_invented_returns(tmp_path):
     assert r['sessions']['2026-11-04']['event_gaps_over_120_seconds']==2
     assert r['sessions']['2026-11-04']['max_event_gap_seconds']==348*60
     assert 'return' not in r['sessions']['2026-11-04']
+    coverage = r['sessions']['2026-11-04']['event_coverage']
+    assert coverage['opening_gap_seconds'] == 42*60
+    assert coverage['closing_gap_seconds'] == 348*60
+    assert coverage['long_gap_interval_seconds'] == 390*60
+    assert coverage['observed_interval_seconds'] == 390*60
+
+
+@pytest.mark.parametrize('corrupt', [False, True])
+def test_no_events_is_missing_coverage_but_corruption_is_unknown(tmp_path, corrupt):
+    state = fixture(tmp_path)
+    opened = NOW-timedelta(hours=18)
+    closed = opened+timedelta(hours=3, minutes=30)
+    state['sessions']['2026-11-04'] = {'open': opened.isoformat(), 'close': closed.isoformat()}
+    (tmp_path/'state.json').write_text(json.dumps(state))
+    (tmp_path/'events.jsonl').write_text('private-corrupt' if corrupt else '')
+    result = audit(tmp_path, NOW)
+    coverage = result['sessions']['2026-11-04']['event_coverage']
+    if corrupt:
+        assert coverage is None
+    else:
+        assert coverage['first_event_at'] is None and coverage['last_event_at'] is None
+        assert coverage['opening_gap_seconds'] == coverage['closing_gap_seconds'] == 210*60
+        # Boundary summaries overlap; the total must count each interval once.
+        assert coverage['long_gap_interval_seconds'] == 210*60
+    assert 'private-corrupt' not in json.dumps(result)
+
+
+def test_ongoing_session_has_no_completed_closing_gap(tmp_path):
+    state = fixture(tmp_path)
+    opened = NOW-timedelta(minutes=3)
+    state['sessions']['2026-11-05'] = {'open': opened.isoformat(), 'close': (NOW+timedelta(hours=3)).isoformat()}
+    (tmp_path/'state.json').write_text(json.dumps(state))
+    (tmp_path/'events.jsonl').write_text(json.dumps({'at': (opened+timedelta(minutes=1)).isoformat(), 'kind': 'flat'}))
+    coverage = audit(tmp_path, NOW)['sessions']['2026-11-05']['event_coverage']
+    assert coverage['opening_gap_seconds'] == 60
+    assert coverage['closing_gap_seconds'] is None
+    assert coverage['long_gap_interval_seconds'] == 0  # exactly 120 seconds is not over threshold
 
 
 def test_unknown_intent_and_corrupt_tail_fail_closed_without_payloads(tmp_path):

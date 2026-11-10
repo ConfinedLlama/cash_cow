@@ -130,8 +130,23 @@ def audit(directory, now=None):
             if closed <= opened or opened > now:
                 raise ValueError("Invalid session interval")
             end = min(closed, now)
-            times = [opened] + [at for at, _ in events if opened <= at <= end] + [end]
+            session_times = [at for at, _ in events if opened <= at <= end]
+            times = [opened] + session_times + [end]
             gaps = [(b-a).total_seconds() for a,b in zip(times,times[1:])]
+            # These are gaps between log events, not measured process downtime or
+            # missing price bars. Keep boundary gaps even when no events exist.
+            trustworthy_events = not any(issue in issues for issue in (
+                'unreadable:events.jsonl', 'malformed_or_future_events',
+                'nonmonotonic_event_times', 'unknown_event_kind',
+            ))
+            coverage = {
+                'first_event_at': session_times[0].isoformat() if session_times else None,
+                'last_event_at': session_times[-1].isoformat() if session_times else None,
+                'opening_gap_seconds': ((session_times[0] if session_times else end)-opened).total_seconds(),
+                'closing_gap_seconds': (closed-(session_times[-1] if session_times else opened)).total_seconds() if now >= closed else None,
+                'long_gap_interval_seconds': sum(g for g in gaps if g > 120),
+                'observed_interval_seconds': (end-opened).total_seconds(),
+            } if trustworthy_events else None
             blocked = bool(session.get("blocked"))
             sessions[day] = {
                 "blocked": blocked, "partial_attendance": bool(session.get("partial_attendance")),
@@ -140,6 +155,7 @@ def audit(directory, now=None):
                 "max_event_gap_seconds": max(gaps, default=0),
                 "event_gaps_over_120_seconds": sum(g > 120 for g in gaps),
                 "events": dict(Counter(kind for at,kind in events if opened <= at <= end)),
+                "event_coverage": coverage,
             }
             if blocked or session.get("partial_attendance") or session.get("unresolved_at_close") or any(g > 120 for g in gaps):
                 issues.append("session_requires_coverage_review:" + day)
