@@ -146,3 +146,33 @@ Validation: four regression tests cover delayed quote receipt, quote expiry
 before submission, crossing the entry cutoff, and sanitized diagnostics with
 persistent session blocking. The complete suite passed: 140 tests. Test orders
 are synthetic fixtures and were never sent to Alpaca.
+
+
+## November 11 Singapore: optional I/O failure isolation
+
+The November 10 session remains blocked and incomplete. Maintenance found
+`OSError: [Errno 11] Resource deadlock avoided` reading news/status.json inside
+both the news worker's error handler and the periodic report writer. An optional
+status/report read could terminate a collector thread or the main process.
+The filesystem cause is not established; this correction is not a sleep fix.
+
+Commits `776cc32` and `9b88f48` keep collection retrying at the existing cadence
+when its error-status write also fails, and isolate optional report generation
+from the trading polling loop. The last known news status is preserved when
+unreadable; freshness checks still reject stale inputs. Reports publish atomically
+and retain their original generation timestamp when refresh fails. Sanitized
+stderr diagnostics record failures when that sink is available. Authoritative
+journal I/O still fails closed; these helpers do not repair or reset trading state.
+
+The correction was deployed November 11 at 08:12:48 UTC after a deliberate STOP,
+observed stopped event, released ownership locks and fresh flat-account
+reconciliation. The same paper_ai_v1 service restarted with matching model
+preflight. Prior sessions, orders and model usage remain unchanged. There was
+no prompt/configuration, signal, risk-limit or order-behavior change, no baseline
+restart and no funded action. See the [November 11 report](../reports/daily/2026-11-11.md)
+for tests, exact revision, source hashes' private location and post-deploy evidence.
+
+A fresh report is a view of the journal, not proof of complete session coverage.
+Continue checking health, attendance, broker reconciliation, loaded service,
+external power and caffeinate. Lid closure and critical filesystem failures can
+still interrupt trading. Do not clear old blocked sessions to resume entries.
