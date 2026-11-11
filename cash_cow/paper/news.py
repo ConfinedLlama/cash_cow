@@ -6,6 +6,7 @@ Store revisions separately and first-observed time to prevent hindsight leakage.
 from datetime import datetime, timedelta, timezone
 import hashlib
 import json
+import sys
 import threading
 
 from .client import PaperClient, iso, timestamp
@@ -54,20 +55,42 @@ class NewsCollector:
         return status
 
 
+def record_collection_error(directory, error):
+    """Best-effort diagnostics must not kill the worker or reset unreadable state."""
+    status_path = directory / "news/status.json"
+    category = type(error).__name__
+    if category not in {'OSError', 'ValueError', 'KeyError', 'TypeError', 'APIError', 'TransportError'}:
+        category = 'CollectionError'
+    at = iso(datetime.now(timezone.utc))
+    try:
+        previous = json.loads(status_path.read_text()) if status_path.exists() else {}
+        if not isinstance(previous, dict):
+            raise ValueError('Invalid news status')
+        previous.update(error=category, last_attempt=at, trading_effect="none")
+        atomic_json(status_path, previous)
+    except (OSError, ValueError, TypeError):
+        # Preserve the last known status; freshness will expire naturally.
+        # No exception text or raw article is copied to diagnostics.
+        try:
+            print(json.dumps({'at': at, 'component': 'news_collector',
+                              'status': 'error_status_unavailable', 'error_type': category}),
+                  file=sys.stderr, flush=True)
+        except OSError:
+            pass  # Both sinks failed; the stale status remains the health signal.
+
+
+def news_worker_loop(directory, stop):
+    while not stop.is_set():
+        try:
+            NewsCollector(PaperClient(), directory).collect(datetime.now(timezone.utc))
+        except Exception as error:
+            record_collection_error(directory, error)
+        stop.wait(300)
+
+
 def start_news_worker(directory):
     stop = threading.Event()
-
-    def work():
-        while not stop.is_set():
-            try:
-                NewsCollector(PaperClient(), directory).collect(datetime.now(timezone.utc))
-            except Exception as error:
-                status_path = directory / "news/status.json"
-                previous = json.loads(status_path.read_text()) if status_path.exists() else {}
-                previous.update(error=type(error).__name__, last_attempt=iso(datetime.now(timezone.utc)), trading_effect="none")
-                atomic_json(status_path, previous)
-            stop.wait(300)
-
-    thread = threading.Thread(target=work, name="paper-news-context", daemon=True)
+    thread = threading.Thread(target=news_worker_loop, args=(directory, stop),
+                              name="paper-news-context", daemon=True)
     thread.start()
     return stop
