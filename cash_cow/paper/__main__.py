@@ -7,6 +7,8 @@ import json
 import os
 from pathlib import Path
 import signal
+import sys
+import tempfile
 import time
 
 from .client import PaperClient, APIError, TransportError
@@ -79,8 +81,58 @@ def write_report(directory, config):
                  "Subscription mode uses ai_subscription_usage.json for attempted requests and token usage. It does not fall back to paid API calls. Subscription allocation/extra credits are not deducted from trading P&L.",
                  "AI confidence scores are not calibrated probabilities. Review ai_decisions/ for the exact packet, response, source times and failures.", ""]
     target = directory / "REPORT.md"
-    target.write_text("\n".join(rows))
+    atomic_report(target, "\n".join(rows))
     return target
+
+
+def atomic_report(target, text):
+    """A failed optional report write must leave the prior complete report."""
+    fd, name = tempfile.mkstemp(prefix='.report-', dir=target.parent)
+    try:
+        with os.fdopen(fd, 'w') as stream:
+            stream.write(text)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(name, target)
+    finally:
+        Path(name).unlink(missing_ok=True)
+
+
+def refresh_report(directory, config):
+    """Reporting has no trading authority and cannot terminate the polling loop."""
+    try:
+        write_report(directory, config)
+        return True
+    except Exception as error:
+        category = type(error).__name__
+        if category not in {'OSError', 'ValueError', 'KeyError', 'TypeError', 'ZeroDivisionError'}:
+            category = 'ReportError'
+        try:
+            print(json.dumps({'at': datetime.now(timezone.utc).isoformat(),
+                              'component': 'paper_report', 'status': 'refresh_failed',
+                              'error_type': category}), file=sys.stderr, flush=True)
+        except OSError:
+            pass  # The previous report's timestamp still exposes its staleness.
+        return False
+
+
+def run_loop(runner, directory, config, *, once=False, news_stop=None, provider=None):
+    while True:
+        try:
+            event = runner.tick()
+        except (APIError, TransportError, ValueError, KeyError, TypeError) as error:
+            # Trading failures retain the existing needs-attention path.
+            reason = str(error) if isinstance(error, (APIError, TransportError, ValueError)) else "Unexpected API schema; inspect adapter"
+            event = runner.event("needs_attention", reason=reason, error_type=type(error).__name__)
+        print(json.dumps(event), flush=True)
+        refresh_report(directory, config)
+        if once or event["kind"] == "stopped":
+            if news_stop:
+                news_stop.set()
+            if provider:
+                provider.close()
+            break
+        time.sleep(60 if event["kind"] == "market_closed" else config["poll_seconds"])
 
 
 def main():
@@ -153,22 +205,7 @@ def main():
         signal.signal(signal.SIGTERM, request_stop)
         signal.signal(signal.SIGINT, request_stop)
         news_stop = start_news_worker(DIRECTORY) if not args.once else None
-        while True:
-            try:
-                event = runner.tick()
-            except (APIError, TransportError, ValueError, KeyError, TypeError) as error:
-                # Avoid printing response bodies, credentials or account payloads.
-                reason = str(error) if isinstance(error, (APIError, TransportError, ValueError)) else "Unexpected API schema; inspect adapter"
-                event = runner.event("needs_attention", reason=reason, error_type=type(error).__name__)
-            print(json.dumps(event), flush=True)
-            write_report(DIRECTORY, config)
-            if args.once or event["kind"] == "stopped":
-                if news_stop:
-                    news_stop.set()
-                if provider:
-                    provider.close()
-                break
-            time.sleep(60 if event["kind"] == "market_closed" else config["poll_seconds"])
+        run_loop(runner, DIRECTORY, config, once=args.once, news_stop=news_stop, provider=provider)
 
 
 if __name__ == "__main__":
