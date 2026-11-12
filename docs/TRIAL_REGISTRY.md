@@ -1,5 +1,12 @@
 # Research trial registry
 
+## packet_context_v3 — registered November 12, 2026; offline only
+
+[Protocol](PACKET_CONTEXT_V3.md) adds independently recorded response receipts
+and saved official-release evidence to the same three comparison arms. It does
+not modify v2, the running paper strategy or historical holdout. Registration
+precedes its first archive audit; no model evaluation or execution is enabled.
+
 ## packet_context_v2 — registered November 9, 2026; offline only
 
 The [frozen input protocol](PACKET_CONTEXT_V2.md) and

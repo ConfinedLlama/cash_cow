@@ -1,0 +1,37 @@
+{
+  "version": "packet_context_v3",
+  "status": "offline_only",
+  "execution_enabled": false,
+  "baseline": "paper_ai_v1",
+  "symbol": "SPY",
+  "feed": "iex",
+  "return_lags_minutes": [
+    5,
+    15,
+    30
+  ],
+  "history_bars": 6,
+  "bar_minutes": 5,
+  "max_snapshot_age_seconds": 120,
+  "max_release_age_days": 7,
+  "max_packet_bytes": 20000,
+  "arms": [
+    "baseline",
+    "history",
+    "history_and_releases"
+  ],
+  "capital_usd": 2000,
+  "allocation": 0.95,
+  "cost_stress": {
+    "minimum_per_order_usd": 0.4,
+    "per_share_usd": 0.0035,
+    "per_order_bps": 2
+  },
+  "prospective_sessions": 20,
+  "capture_schema": "receipt_capture_v1",
+  "release_evidence_schema": "release_evidence_v1",
+  "max_request_seconds": 60,
+  "max_capture_seconds": 120,
+  "max_clock_difference_seconds": 10,
+  "max_wall_monotonic_difference_seconds": 1
+}
