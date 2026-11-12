@@ -41,3 +41,15 @@ reader does not accept this new format. A future explicitly versioned adapter
 must enforce response receipt before decision cutoff and preserve both source
 and packet hashes. Historical diagnostics remain labelled legacy timing.
 Model comparison still needs its own fixed prospective start and request budget.
+
+## Offline receipt validation (November 12)
+
+`packet_research.receipts.receipt_history` now validates saved capture payload
+hashes, request/response ordering, monotonic durations, decision cutoff,
+current-session calendar, exact request scope and complete minute coverage.
+It reuses v2's unchanged feature formulas and rejects future, sparse, stale,
+closed-market and legacy records. Zero-volume bars remain excluded by those
+feature rules. This is a pure offline reader, with no runtime imports or calls.
+Local timestamp consistency is not proof of synchronized clocks or source
+identity; preserve the original capture hash alongside normalized features.
+The versioned packet consumer is a separate research step.
