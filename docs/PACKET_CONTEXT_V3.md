@@ -52,3 +52,20 @@ max(USD 0.40, USD 0.0035/share) plus two basis points. Model usage and data cost
 must be reported separately. Complete-month returns, profitable/target-hit
 months and drawdown require verified coverage; no 10% monthly claim follows
 from this engineering protocol. The existing paper risk limits remain intact.
+
+## Read-only archive audit
+
+```sh
+.venv/bin/python -m cash_cow.packet_research.replay_v3 \
+  --directory data/telemetry/paper_ai_v1 \
+  --captures .local/research/receipt_captures
+```
+
+Optional `--releases` and `--evidence` must be supplied together; source files
+resolve beside the evidence manifest. Output contains only aggregate counts,
+fixed rejection categories and hashes. The CLI returns 2 for review required,
+including empty archives; this does not start a collector or request a model.
+Invalid capture identities/timestamps invalidate history construction across the
+archive rather than allowing selection around an unorderable record. All read
+inputs are bounded and hash-checked again, and decision/capture membership is
+rechecked, but these checks cannot make a live directory an atomic snapshot.
