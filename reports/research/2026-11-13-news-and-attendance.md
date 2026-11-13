@@ -58,8 +58,9 @@ observed since Nov 12 at 08:00 UTC relating to inflation/PPI, Fed, trade, China,
 Hormuz or NVIDIA. Secondary reports, opinions and allegations remain unverified.
 Raw licensed headlines and source identifiers remain local.
 
-The local feed first stored a headline reporting NVIDIA's transition at
-**Nov 12 13:54:22.381525 UTC** (vendor update 13:49:37 UTC). An earlier
+The local feed records first_observed_at for a headline reporting NVIDIA's
+transition as **Nov 12 13:54:22.381525 UTC** (vendor update 13:49:37 UTC).
+This collector timestamp is not an independently verified HTTP receipt time. An earlier
 11:43:37 UTC observation was a report about possible succession, not the same
 confirmation. Today's direct company-source review must not replace either
 observation time. The six saved decision packets at 15:05–15:30 UTC each had
