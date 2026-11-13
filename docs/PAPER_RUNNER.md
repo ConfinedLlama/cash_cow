@@ -176,3 +176,21 @@ A fresh report is a view of the journal, not proof of complete session coverage.
 Continue checking health, attendance, broker reconciliation, loaded service,
 external power and caffeinate. Lid closure and critical filesystem failures can
 still interrupt trading. Do not clear old blocked sessions to resume entries.
+
+## Read-only broker reconciliation audit
+
+`python -m cash_cow.paper.broker_audit --config paper_ai_v1` makes only account,
+positions and open-order GET requests to the fixed paper endpoint. It checks the
+bound account and frozen configuration, validates intent/fill fields, compares
+position and cash to the durable ledger, and flags unresolved or unowned orders.
+It does not initialize a Runner, accept broker updates, repair state or submit
+orders. A changed reconciliation state during the reads invalidates the result;
+ordinary heartbeat changes do not. Any open orders require review, including
+owned orders, because sequential snapshots can race a fill. Recheck after the
+runner reconciles; never interpret an audit as permission to clear its guard.
+
+Output contains fixed issue labels and aggregate numbers, not account/order
+identifiers, raw payloads or credential/exception text. Exit 2 means review.
+The wrapper catches transport/JSON failures. Passing checks do not establish
+atomic broker state, fresh news, model access, attendance, or trading performance;
+continue using the separate local health, readiness and model-preflight checks.
