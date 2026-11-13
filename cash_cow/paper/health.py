@@ -21,6 +21,52 @@ EVENT_KINDS = {
 }
 
 
+
+def diagnostic_labels(event):
+    """Map private event details to fixed labels; never return free text."""
+    kind = event['kind']
+    action = event.get('action') if kind == 'ai_proposal' else None
+    if not isinstance(action, str) or action not in {'BUY', 'HOLD', 'EXIT'}:
+        action = None
+    fault = None
+    if kind == 'needs_attention':
+        if event.get('error_type') == 'TransportError':fault = 'transport_error'
+        elif event.get('reason') == 'Local/broker clock discrepancy':fault = 'clock_discrepancy'
+        else:fault = 'other_operational_error'
+    elif kind == 'quote_failure':fault = 'quote_failure'
+    elif kind == 'entry_blocked':
+        reason = event.get('reason')
+        labels = {'stale_or_unavailable_quote': 'quote_unavailable',
+                  'quote_expired_before_submission': 'quote_expired',
+                  'spread_limit': 'spread_limit', 'shortened_session': 'shortened_session',
+                  'insufficient_cash_for_whole_share': 'insufficient_cash',
+                  'entry_cutoff_before_submission': 'entry_cutoff',
+                  'asset_unavailable': 'asset_unavailable'}
+        fault = labels.get(reason, 'other_entry_block') if isinstance(reason, str) else 'other_entry_block'
+    elif kind == 'submission_uncertain':fault = 'submission_uncertain'
+    return fault, action
+
+
+def session_timeline(records, opened, end):
+    selected = [r for r in records if opened <= r[0] <= end]
+    problems = [r for r in selected if r[2] is not None]
+    proposals = [r for r in selected if r[1] == 'ai_proposal']
+    blocks = [r for r in selected if r[1] == 'entry_blocked']
+    first = problems[0] if problems else None
+    return {
+        'problem_event_counts': dict(Counter(r[2] for r in problems)),
+        'first_problem_event_at': first[0].isoformat() if first else None,
+        'first_problem_category': first[2] if first else None,
+        'first_entry_block_at': blocks[0][0].isoformat() if blocks else None,
+        'first_proposal_event_at': proposals[0][0].isoformat() if proposals else None,
+        'last_proposal_event_at': proposals[-1][0].isoformat() if proposals else None,
+        'proposal_poll_actions': dict(Counter(r[3] for r in proposals)),
+        'proposal_poll_events_before_first_problem': sum(r[0] < first[0] for r in proposals) if first else None,
+        'proposal_poll_events_at_or_after_first_problem': sum(r[0] >= first[0] for r in proposals) if first else None,
+        'limits': 'Logged observations only. Proposal polling repeats are not unique decisions or fills. First problem includes entry filters and is not necessarily a persistent halt or the true onset of downtime. No causal attribution.'
+    }
+
+
 def valid_day(value):
     try:
         return isinstance(value, str) and date.fromisoformat(value).isoformat() == value
@@ -94,7 +140,7 @@ def audit(directory, now=None):
     if news_gap:
         issues.append("news_coverage_gap")
 
-    events, malformed = [], 0
+    events, diagnostics, malformed = [], [], 0
     try:
         raw = (directory / "events.jsonl").read_bytes()
         hashes["events.jsonl"] = hashlib.sha256(raw).hexdigest()
@@ -104,7 +150,12 @@ def audit(directory, now=None):
                 at = timestamp(event["at"])
                 if not isinstance(event["kind"], str) or at > now:
                     raise ValueError("Invalid event")
-                events.append((at, event_kind(event["kind"])))
+                kind = event_kind(event['kind'])
+                events.append((at, kind))
+                fault, action = diagnostic_labels(event)
+                if kind == 'ai_proposal' and action is None:
+                    issues.append('invalid_proposal_action')
+                diagnostics.append((at, kind, fault, action))
             except (ValueError, KeyError, TypeError, AttributeError):
                 malformed += 1
     except OSError:
@@ -114,6 +165,7 @@ def audit(directory, now=None):
     if any(a[0] > b[0] for a, b in zip(events, events[1:])):
         issues.append("nonmonotonic_event_times")
     events.sort(key=lambda row: row[0])
+    diagnostics.sort(key=lambda row: row[0])
 
     sessions = {}
     for day, session in object_value(state.get("sessions"), 'sessions').items():
@@ -156,6 +208,8 @@ def audit(directory, now=None):
                 "event_gaps_over_120_seconds": sum(g > 120 for g in gaps),
                 "events": dict(Counter(kind for at,kind in events if opened <= at <= end)),
                 "event_coverage": coverage,
+                "timeline": session_timeline(diagnostics, opened, end)
+                    if trustworthy_events and 'invalid_proposal_action' not in issues else None,
             }
             if blocked or session.get("partial_attendance") or session.get("unresolved_at_close") or any(g > 120 for g in gaps):
                 issues.append("session_requires_coverage_review:" + day)

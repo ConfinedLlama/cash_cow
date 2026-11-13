@@ -153,3 +153,60 @@ def test_string_boolean_cannot_establish_closed_session(tmp_path):
     state['sessions'] = {'2026-11-04': {'closed': 'true'}}
     (tmp_path/'state.json').write_text(json.dumps(state))
     assert 'invalid_session_interval:2026-11-04' in audit(tmp_path, NOW)['issues']
+
+
+def test_session_timeline_separates_hold_polls_from_later_faults(tmp_path):
+    state=fixture(tmp_path);opened=NOW-timedelta(hours=18);closed=opened+timedelta(hours=6,minutes=30)
+    state['sessions']['2026-11-04']={'open':opened.isoformat(),'close':closed.isoformat(),'blocked':'monitoring_gap'}
+    (tmp_path/'state.json').write_text(json.dumps(state))
+    events=[{'at':(opened+timedelta(minutes=m)).isoformat(), 'kind':kind, **details}
+            for m,kind,details in [
+                (35,'ai_proposal',{'action':'HOLD','rationale':'PRIVATE_RATIONALE'}),
+                (35.5,'ai_proposal',{'action':'HOLD'}),
+                (66,'needs_attention',{'error_type':'TransportError','reason':'PRIVATE_EXCEPTION'}),
+                (69,'needs_attention',{'reason':'Local/broker clock discrepancy'}),
+                (70,'quote_failure',{}),
+                (70,'entry_blocked',{'reason':'stale_or_unavailable_quote'}),
+                (80,'flat',{})]]
+    (tmp_path/'events.jsonl').write_text('\n'.join(json.dumps(e) for e in events))
+    before=(tmp_path/'events.jsonl').read_bytes()
+    result=audit(tmp_path,NOW);timeline=result['sessions']['2026-11-04']['timeline']
+    assert timeline['first_problem_category']=='transport_error'
+    assert timeline['first_problem_event_at']==(opened+timedelta(minutes=66)).isoformat()
+    assert timeline['proposal_poll_actions']=={'HOLD':2}
+    assert timeline['proposal_poll_events_before_first_problem']==2
+    assert timeline['proposal_poll_events_at_or_after_first_problem']==0
+    assert timeline['problem_event_counts']=={'transport_error':1,'clock_discrepancy':1,'quote_failure':1,'quote_unavailable':1}
+    assert 'PRIVATE' not in json.dumps(result)
+    assert before==(tmp_path/'events.jsonl').read_bytes()
+
+
+@pytest.mark.parametrize('corruption', ['tail', 'action', 'order'])
+def test_untrustworthy_events_have_unknown_timeline(tmp_path, corruption):
+    state=fixture(tmp_path);opened=NOW-timedelta(hours=18)
+    state['sessions']['2026-11-04']={'open':opened.isoformat(),'close':(opened+timedelta(hours=6)).isoformat()}
+    (tmp_path/'state.json').write_text(json.dumps(state))
+    events=[{'at':(opened+timedelta(minutes=35)).isoformat(),'kind':'ai_proposal','action':'HOLD'},
+            {'at':(opened+timedelta(minutes=36)).isoformat(),'kind':'flat'}]
+    if corruption=='action':events[0]['action']=['PRIVATE_ACTION']
+    if corruption=='order':events.reverse()
+    raw='\n'.join(json.dumps(e) for e in events)
+    if corruption=='tail':raw+='\nPRIVATE_CORRUPT'
+    (tmp_path/'events.jsonl').write_text(raw)
+    result=audit(tmp_path,NOW)
+    assert result['sessions']['2026-11-04']['timeline'] is None
+    assert result['status']=='review_required' and 'PRIVATE' not in json.dumps(result)
+
+
+def test_unknown_problem_reason_never_leaks_and_no_problem_is_not_zero_time(tmp_path):
+    state=fixture(tmp_path);opened=NOW-timedelta(hours=18)
+    state['sessions']['2026-11-04']={'open':opened.isoformat(),'close':(opened+timedelta(hours=6)).isoformat()}
+    (tmp_path/'state.json').write_text(json.dumps(state))
+    (tmp_path/'events.jsonl').write_text(json.dumps({'at':(opened+timedelta(minutes=35)).isoformat(),'kind':'flat'}))
+    timeline=audit(tmp_path,NOW)['sessions']['2026-11-04']['timeline']
+    assert timeline['first_problem_event_at'] is None
+    assert timeline['proposal_poll_events_before_first_problem'] is None
+    (tmp_path/'events.jsonl').write_text(json.dumps({'at':(opened+timedelta(minutes=35)).isoformat(),'kind':'entry_blocked','reason':{'PRIVATE':True}}))
+    result=audit(tmp_path,NOW)
+    assert result['sessions']['2026-11-04']['timeline']['problem_event_counts']=={'other_entry_block':1}
+    assert 'PRIVATE' not in json.dumps(result)

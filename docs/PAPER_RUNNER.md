@@ -194,3 +194,14 @@ identifiers, raw payloads or credential/exception text. Exit 2 means review.
 The wrapper catches transport/JSON failures. Passing checks do not establish
 atomic broker state, fresh news, model access, attendance, or trading performance;
 continue using the separate local health, readiness and model-preflight checks.
+
+The health audit's per-session `timeline` records the first logged operational
+problem or entry filter, first entry block, and first/last model-proposal polling
+event. It counts fixed problem categories and BUY/HOLD/EXIT poll events before
+and after that first problem. Poll events can repeat one saved decision; use
+`decision_audit` for unique counts. A first problem may be a transient error or
+ordinary entry filter, not a permanent session block or its physical root cause.
+The journal's latest monitoring-gap timestamp may be overwritten by later gaps;
+use the immutable event stream for sequence. Corrupt, unknown or out-of-order
+events make the timeline unavailable rather than falsely showing no problems.
+Raw reason strings, model rationales, prices and identifiers are never echoed.
