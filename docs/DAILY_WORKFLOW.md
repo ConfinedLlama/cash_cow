@@ -43,6 +43,15 @@ Push normally to `origin/main` after required checks. If remote history moved, i
 
 ## Daily report
 
+Use the read-only [paper scorecard](SCORECARD_V1.md) to compare every elapsed
+trial session with cash and the declared independent-day SPY reference. Fetch
+to a new ignored `data/research/` snapshot and retain prior snapshots. Include
+order acknowledgements, cumulative filled orders, unique decisions and missing
+coverage; do not confuse intents or fixture tests with broker fills. Reference
+prices are retrospective reporting evidence only, never model inputs. The v1
+reference fetch is limited to November 4–December 2; register a new evaluation
+window before extending it. Do not infer trading skill from missed sessions.
+
 Generate a draft with:
 
 ```sh

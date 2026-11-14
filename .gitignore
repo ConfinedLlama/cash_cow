@@ -12,3 +12,4 @@ reports/runs/*/monthly/
 *.log
 .local/
 data/telemetry/
+data/research/
