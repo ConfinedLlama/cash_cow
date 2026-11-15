@@ -35,9 +35,20 @@ No new brokerage orders, model calls, or runtime changes are made by this tool.
 Usage (new private destination each fetch):
 
 ```sh
-.venv/bin/python -m cash_cow.paper.scorecard --fetch data/research/scorecard-YYYYMMDDTHHMMSSZ.json
-.venv/bin/python -m cash_cow.paper.scorecard --snapshot data/research/scorecard-YYYYMMDDTHHMMSSZ.json
+.venv/bin/python -m cash_cow.paper.scorecard --fetch data/research/scorecard-YYYYMMDDTHHMMSSZ.json --calendar PATH
+.venv/bin/python -m cash_cow.paper.scorecard --snapshot data/research/scorecard-YYYYMMDDTHHMMSSZ.json --calendar PATH
 ```
 
 Only aggregate returns/costs and source hashes may be published. Raw bars,
 account identifiers and private telemetry stay out of Git.
+
+November 15 correction (output version v1.1): supply an independently captured
+full twenty-session calendar in the format documented in AI_PAPER_TRIAL.md.
+The original implementation used the union of price and accounting dates and
+could omit a day missing from both. All elapsed scheduled days now remain in
+the scorecard, with missing data explicitly unavailable. Reference intervals
+must match this calendar; future/out-of-window accounting rows are rejected.
+Old price snapshots remain readable and are not rewritten. Pricing, allocation
+and cost assumptions are unchanged. Attendance comes from the calendar audit,
+including unresolved exposure and operational errors; it is not certification
+of complete market-data coverage or profitability.

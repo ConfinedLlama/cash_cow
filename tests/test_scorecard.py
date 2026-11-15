@@ -1,5 +1,5 @@
 """Synthetic reference prices; these assertions are not paper executions."""
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from copy import deepcopy
 import pytest
 
@@ -47,7 +47,7 @@ def test_malformed_data_is_rejected(change):
 
 
 def test_missing_accounting_session_remains_in_denominator():
-    result = evaluate(snapshot(), [], datetime(2026, 11, 6, tzinfo=timezone.utc))
+    result = evaluate(snapshot(), [], datetime(2026, 11, 5, 12, tzinfo=timezone.utc), calendar())
     assert len(result) == 1
     assert result[0]['paper_accounting_return'] is None
     assert result[0]['spy_reference']['return'] is not None
@@ -61,7 +61,7 @@ def test_snapshot_provenance_and_cutoffs(change):
     if change == 'source': snap['source'] = 'different feed'
     if change == 'before_close': snap['requested_at'] = '2026-11-04T20:00:00Z'
     if change == 'before_trial': snap['sessions'][0]['calendar'] = dict(DAY, date='2026-11-03')
-    with pytest.raises(ValueError): evaluate(snap, [], datetime(2026, 11, 6, tzinfo=timezone.utc))
+    with pytest.raises(ValueError): evaluate(snap, [], datetime(2026, 11, 5, 12, tzinfo=timezone.utc), calendar())
 
 
 def test_short_day_uses_its_calendar_close():
@@ -94,3 +94,35 @@ def test_intent_acknowledgement_and_partial_fill_are_distinct():
     assert execution_counts(state) == first  # Polling does not add a fill.
     state['orders']['fixture']['broker']['filled_qty'] = '3'
     with pytest.raises(ValueError): execution_counts(state)
+
+
+def calendar():
+    rows = []
+    day = date(2026, 11, 4)
+    while len(rows) < 20:
+        if day.weekday() < 5 and day != date(2026, 11, 26):
+            rows.append(dict(DAY, date=str(day), close='13:00' if day == date(2026, 11, 27) else '16:00'))
+        day += timedelta(days=1)
+    return {'source': 'Alpaca GET /v2/calendar', 'start': '2026-11-04', 'end': '2026-12-02',
+            'fetched_at': '2026-11-04T12:00:00Z', 'sessions': rows}
+
+
+def test_day_missing_from_both_sources_remains_visible():
+    snap = snapshot(); snap['sessions'] = []
+    rows = evaluate(snap, [], datetime(2026, 11, 6, 12, tzinfo=timezone.utc), calendar())
+    assert [r['session_date'] for r in rows] == ['2026-11-04', '2026-11-05']
+    assert all(r['paper_accounting_return'] is None and r['spy_reference']['return'] is None for r in rows)
+
+
+def test_interval_disagreement_and_nonelapsed_accounting_rejected():
+    cal = calendar(); cal['sessions'][0]['close'] = '13:00'
+    now = datetime(2026, 11, 5, 12, tzinfo=timezone.utc)
+    with pytest.raises(ValueError, match='interval disagrees'):
+        evaluate(snapshot(), [], now, cal)
+    with pytest.raises(ValueError, match='nonelapsed'):
+        evaluate(snapshot(), [{'session_date': '2026-11-05', 'opening_nav': 2000, 'closing_nav': 2000}], now, calendar())
+
+
+@pytest.mark.parametrize('opened,closed', [('09:30:01', '16:00'), ('09:30+01:00', '16:00'), ('09:30', '16:00:01')])
+def test_calendar_clock_strings_are_exact(opened, closed):
+    with pytest.raises(ValueError): interval(dict(DAY, open=opened, close=closed))

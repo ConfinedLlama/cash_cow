@@ -12,7 +12,7 @@ from zoneinfo import ZoneInfo
 
 from cash_cow.daily_report import load_performance
 from .client import PaperClient, iso, timestamp
-from . import decision_audit, health
+from . import attendance, decision_audit, health
 from .broker_audit import finite
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -57,6 +57,8 @@ def interval(row):
     day = date.fromisoformat(row['date'])
     if not START <= day <= END:
         raise ValueError('Outside registered paper reference window')
+    if row['open'] != '09:30' or row['close'] not in ('13:00', '16:00'):
+        raise ValueError('Unrecognized regular-session clock values')
     opening = datetime.fromisoformat(f"{day}T{row['open']}").replace(tzinfo=NY)
     closing = datetime.fromisoformat(f"{day}T{row['close']}").replace(tzinfo=NY)
     if opening.hour != 9 or opening.minute != 30 or not opening < closing:
@@ -123,7 +125,13 @@ def fetch(client, now):
     return {'version': 1, 'source': SOURCE, 'requested_at': iso(now), 'sessions': days}
 
 
-def evaluate(snapshot, session_rows, now):
+def evaluate(snapshot, session_rows, now, calendar):
+    # An independent full calendar keeps a day visible even when BOTH prices
+    # and accounting are missing. Never infer the denominator from observations.
+    scheduled = attendance.calendar_sessions(calendar, str(START), 20, now)
+    if scheduled[-1][0] != str(END):
+        raise ValueError('Calendar changed the registered window; review before extending')
+    expected = {day: (opened, closed) for day, opened, closed in scheduled if closed <= now}
     if snapshot.get('version') != 1 or snapshot.get('source') != SOURCE:
         raise ValueError('Unrecognized reference snapshot')
     requested = timestamp(snapshot['requested_at'])
@@ -132,7 +140,9 @@ def evaluate(snapshot, session_rows, now):
     refs, last_day = {}, None
     for item in snapshot['sessions']:
         row = item['calendar']; day = row['date']
-        _, closing = interval(row)
+        opened, closing = interval(row)
+        if day not in expected or (opened, closing) != expected[day]:
+            raise ValueError('Reference interval disagrees with independent calendar')
         receipt = timestamp(item['received_at'])
         if closing + timedelta(minutes=15) > requested or not requested <= receipt <= now:
             raise ValueError('Reference was not a completed-session observation')
@@ -143,9 +153,13 @@ def evaluate(snapshot, session_rows, now):
     exports = {r['session_date']: r for r in session_rows}
     if len(exports) != len(session_rows):
         raise ValueError('Duplicate paper session')
+    if not exports.keys() <= expected.keys():
+        raise ValueError('Accounting contains a nonelapsed or out-of-window session')
+    for row in session_rows:
+        if finite(row['opening_nav']) <= 0 or finite(row['closing_nav']) <= 0:
+            raise ValueError('Invalid accounting NAV')
     result = []
-    # Calendar days without an accounting export remain explicit missing rows.
-    for day in sorted(refs.keys() | exports.keys()):
+    for day in expected:
         row = exports.get(day)
         result.append({'session_date': day,
                        'paper_accounting_return': row['closing_nav']/row['opening_nav']-1 if row else None,
@@ -159,8 +173,13 @@ def main():
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument('--fetch', type=Path, help='Create an immutable private reference snapshot')
     group.add_argument('--snapshot', type=Path, help='Read an existing reference snapshot')
+    parser.add_argument('--calendar', required=True, type=Path,
+                        help='Independent full twenty-session Alpaca calendar snapshot')
     args = parser.parse_args()
     now = datetime.now(timezone.utc)
+    calendar_raw = args.calendar.read_bytes()
+    calendar = json.loads(calendar_raw)
+    attendance.calendar_sessions(calendar, str(START), 20, now)
     path = args.fetch or args.snapshot
     if args.fetch:
         if not path.resolve().is_relative_to((ROOT/'data/research').resolve()):
@@ -185,13 +204,15 @@ def main():
     operating = health.audit(directory)
     state_raw = (directory/'state.json').read_bytes()
     executions = execution_counts(json.loads(state_raw))
-    rows = evaluate(snapshot, json.loads(exported)['sessions'], datetime.now(timezone.utc))
+    rows = evaluate(snapshot, json.loads(exported)['sessions'], datetime.now(timezone.utc), calendar)
+    coverage = attendance.audit(directory, calendar, str(START))
+    coverage_by_day = {row['date']: row['status'] for row in coverage['sessions']}
     for row in rows:
-        session = operating['sessions'].get(row['session_date'])
-        row['coverage'] = ('incomplete' if session and (session['blocked'] or session['partial_attendance']
-                            or session['event_gaps_over_120_seconds']) else 'requires_review')
-    print(json.dumps({'version': 'scorecard_v1', 'as_of': iso(datetime.now(timezone.utc)),
+        row['coverage'] = coverage_by_day[row['session_date']]
+    print(json.dumps({'version': 'scorecard_v1.1', 'as_of': iso(datetime.now(timezone.utc)),
         'reference_source_sha256': hashlib.sha256(raw).hexdigest(),
+        'calendar_source_sha256': hashlib.sha256(calendar_raw).hexdigest(),
+        'attendance': coverage,
         'paper_performance': performance, 'decisions': decisions,
         'executions': executions, 'execution_state_sha256': hashlib.sha256(state_raw).hexdigest(),
         'order_intents': operating['order_intents'],
