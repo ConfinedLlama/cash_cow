@@ -58,6 +58,17 @@ local checks cannot guarantee future uptime or an open lid and does not verify
 broker reconciliation, network availability, loaded code identity or data freshness.
 Pair it with the health and attendance audits; never use it to clear a session block.
 
+For a combined point-in-time check, run
+`.venv/bin/python -m cash_cow.paper.preflight`. It selects paper_ai_v1 and
+combines service/power readiness, authenticated GET-only broker reconciliation,
+heartbeat/news health, the broker clock and the stored model-preflight
+fingerprint. Exit 2 means attention is required. A check taking over 30 seconds
+also requires review because its snapshots may span a sleep/network interruption.
+Past closed incomplete sessions remain listed separately; current blocks or
+unresolved exposure still fail. `market_closed_checks_passed` does not mean
+the market is open, a new model request succeeded, quota is available, or a
+trade will occur. No state repair, order submission or service restart occurs.
+
 Malformed nested state is a review failure, not an empty account. An unreadable
 order collection produces unknown (`null`) counts; malformed individual orders
 remain unresolved. Unknown event/status labels and invalid date keys are
