@@ -68,6 +68,9 @@ Past closed incomplete sessions remain listed separately; current blocks or
 unresolved exposure still fail. `market_closed_checks_passed` does not mean
 the market is open, a new model request succeeded, quota is available, or a
 trade will occur. No state repair, order submission or service restart occurs.
+Heartbeat and news ages include the time spent on subsequent checks, rather
+than reusing their earlier ages; a measurement that expires during the check
+requires attention even when the full check takes less than 30 seconds.
 
 Malformed nested state is a review failure, not an empty account. An unreadable
 order collection produces unknown (`null`) counts; malformed individual orders

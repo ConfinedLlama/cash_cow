@@ -15,7 +15,7 @@ def inputs():
     local = dict(common, status='local_checks_passed')
     broker = dict(common, status='reconciliation_checks_passed')
     telemetry = dict(common, status='no_local_issue_detected', heartbeat_age_seconds=12,
-                     news_fresh=True, news_coverage_gap_now=False, sessions={})
+                     news_fresh=True, news_age_seconds=90, news_coverage_gap_now=False, sessions={})
     clock = {'is_open': False, 'timestamp': NOW.isoformat(),
              'next_open': '2026-11-16T14:30:00Z', 'next_close': '2026-11-16T21:00:00Z'}
     return [local, broker, telemetry, clock, True, NOW-timedelta(seconds=2), NOW]
@@ -74,3 +74,15 @@ def test_snapshot_failures_are_sanitized_and_other_checks_continue(tmp_path, mon
     assert calls == ['failed', 'failed', 'failed', 'clock']
     assert 'private-account-secret' not in json.dumps(result)
     assert result['status'] == 'attention_required'
+
+
+@pytest.mark.parametrize('field,age,issue', [
+    ('heartbeat_age_seconds', 110, 'heartbeat_not_fresh'),
+    ('news_age_seconds', 590, 'news_not_fresh_or_coverage_gap'),
+])
+def test_measurements_age_while_later_checks_run(field, age, issue):
+    args = inputs()
+    args[2][field] = age
+    args[2]['as_of'] = (NOW-timedelta(seconds=20)).isoformat()
+    args[5] = NOW-timedelta(seconds=22)
+    assert issue in preflight.summarize(*args)['issues']

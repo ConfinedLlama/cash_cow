@@ -31,11 +31,18 @@ def summarize(local, broker, telemetry, clock, model_matches, started_at, now):
         issues.append('broker_reconciliation_requires_review')
     if model_matches is not True:
         issues.append('frozen_model_preflight_not_verified')
-    heartbeat = telemetry.get('heartbeat_age_seconds')
-    if (isinstance(heartbeat, bool) or not isinstance(heartbeat, (int, float))
-            or not math.isfinite(heartbeat) or not 0 <= heartbeat <= 120 or not fresh(telemetry)):
+    def current_age(field):
+        age = telemetry.get(field)
+        if (isinstance(age, bool) or not isinstance(age, (int, float))
+                or not math.isfinite(age) or age < 0 or not fresh(telemetry)):
+            return None
+        return age + (now-timestamp(telemetry['as_of'])).total_seconds()
+
+    heartbeat, news_age = current_age('heartbeat_age_seconds'), current_age('news_age_seconds')
+    if heartbeat is None or heartbeat > 120:
         issues.append('heartbeat_not_fresh')
-    if telemetry.get('news_fresh') is not True or telemetry.get('news_coverage_gap_now') is not False:
+    if (news_age is None or news_age > 600 or telemetry.get('news_fresh') is not True
+            or telemetry.get('news_coverage_gap_now') is not False):
         issues.append('news_not_fresh_or_coverage_gap')
     remaining = []
     today = str(now.astimezone(NY).date())
@@ -74,6 +81,8 @@ def summarize(local, broker, telemetry, clock, model_matches, started_at, now):
             'status': 'attention_required' if issues else ('market_open_checks_passed' if market_open else 'market_closed_checks_passed'),
             'issues': sorted(set(issues)), 'market_open': market_open, 'next_regular_open': next_open,
             'past_incomplete_sessions': sorted(set(past)),
+            'heartbeat_age_at_completion_seconds': heartbeat,
+            'news_age_at_completion_seconds': news_age,
             'model_check': 'stored_fingerprint_only',
             'limits': 'Sequential point-in-time checks, not permission to trade or a future uptime guarantee. '
                       'No fresh model request or subscription quota check; stored preflight does not prove current model access. '
