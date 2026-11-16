@@ -18,7 +18,8 @@ def inputs():
                      news_fresh=True, news_age_seconds=90, news_coverage_gap_now=False, sessions={})
     clock = {'is_open': False, 'timestamp': NOW.isoformat(),
              'next_open': '2026-11-16T14:30:00Z', 'next_close': '2026-11-16T21:00:00Z'}
-    return [local, broker, telemetry, clock, True, NOW-timedelta(seconds=2), NOW]
+    allowance = {'status': 'available', 'session_date': '2026-11-15', 'used': 0, 'limit': 80, 'remaining': 80}
+    return [local, broker, telemetry, clock, True, NOW-timedelta(seconds=2), NOW, allowance]
 
 
 def test_closed_market_is_not_a_failure_or_a_trade_permission():
@@ -67,11 +68,12 @@ def test_snapshot_failures_are_sanitized_and_other_checks_continue(tmp_path, mon
     monkeypatch.setattr(preflight.readiness, 'inspect', fail)
     monkeypatch.setattr(preflight.broker_audit, 'audit', fail)
     monkeypatch.setattr(preflight.health, 'audit', fail)
+    monkeypatch.setattr(preflight.decision_audit, 'audit', fail)
     monkeypatch.setattr(preflight, 'require_model_preflight', lambda *args: None)
     class Client:
         def clock(self): calls.append('clock'); return {}
     result = preflight.inspect(tmp_path, client=Client())
-    assert calls == ['failed', 'failed', 'failed', 'clock']
+    assert calls == ['failed', 'failed', 'failed', 'failed', 'clock']
     assert 'private-account-secret' not in json.dumps(result)
     assert result['status'] == 'attention_required'
 
@@ -86,3 +88,33 @@ def test_measurements_age_while_later_checks_run(field, age, issue):
     args[2]['as_of'] = (NOW-timedelta(seconds=20)).isoformat()
     args[5] = NOW-timedelta(seconds=22)
     assert issue in preflight.summarize(*args)['issues']
+
+
+def test_local_allowance_counts_failures_and_pending_requests():
+    audit = {'as_of': NOW.isoformat(), 'status': 'integrity_checks_passed', 'errors': {},
+             'subscription_attempts': {'2026-11-15': {'completed': 77, 'failed': 2, 'pending': 1}}}
+    cfg = {'ai': {'backend': 'codex_subscription', 'daily_request_limit': 80}}
+    result = preflight.local_allowance(audit, cfg, NOW)
+    assert result['status'] == 'exhausted' and result['used'] == 80 and result['remaining'] == 0
+    args = inputs(); args[-1] = result
+    assert 'local_model_allowance_not_available' in preflight.summarize(*args)['issues']
+    # UTC midnight has not yet reset the New York day.
+    early_utc = datetime(2026, 11, 16, 1, tzinfo=timezone.utc)
+    audit['as_of'] = early_utc.isoformat()
+    assert preflight.local_allowance(audit, cfg, early_utc)['session_date'] == '2026-11-15'
+
+
+@pytest.mark.parametrize('change', ['bad_status', 'negative', 'bool', 'unknown_status', 'stale', 'bad_cap', 'errors'])
+def test_allowance_cannot_turn_bad_evidence_into_unused_budget(change):
+    audit = {'as_of': NOW.isoformat(), 'status': 'integrity_checks_passed', 'errors': {},
+             'subscription_attempts': {'2026-11-15': {'completed': 1}}}
+    cfg = {'ai': {'backend': 'codex_subscription', 'daily_request_limit': 80}}
+    if change == 'bad_status': audit['status'] = 'review_required'
+    if change == 'negative': audit['subscription_attempts']['2026-11-15']['completed'] = -1
+    if change == 'bool': audit['subscription_attempts']['2026-11-15']['completed'] = True
+    if change == 'unknown_status': audit['subscription_attempts']['2026-11-15']['unknown'] = 1
+    if change == 'stale': audit['as_of'] = (NOW-timedelta(seconds=121)).isoformat()
+    if change == 'bad_cap': cfg['ai']['daily_request_limit'] = True
+    if change == 'errors': audit['errors'] = {'unreadable_usage': 1}
+    result = preflight.local_allowance(audit, cfg, NOW)
+    assert result['status'] == 'unverified' and result['remaining'] is None

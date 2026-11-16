@@ -71,6 +71,11 @@ trade will occur. No state repair, order submission or service restart occurs.
 Heartbeat and news ages include the time spent on subsequent checks, rather
 than reusing their earlier ages; a measurement that expires during the check
 requires attention even when the full check takes less than 30 seconds.
+The combined check also validates the local subscription attempt ledger using
+the decision audit. Completed, failed and pending attempts all consume the
+New York day's configured request allowance. Exhausted or unreadable local
+allowance requires attention; unused local slots do not establish remaining
+provider quota, valid authentication or a successful current model request.
 
 Malformed nested state is a review failure, not an empty account. An unreadable
 order collection produces unknown (`null`) counts; malformed individual orders

@@ -6,14 +6,40 @@ import math
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from . import broker_audit, health, readiness
+from . import broker_audit, decision_audit, health, readiness
 from .ai import require_model_preflight
 from .client import PaperClient, timestamp
 
 NY = ZoneInfo('America/New_York')
 
 
-def summarize(local, broker, telemetry, clock, model_matches, started_at, now):
+def local_allowance(decisions, config, now):
+    """Local persisted request cap only; never claim provider subscription quota."""
+    day = str(now.astimezone(NY).date())
+    result = {'status': 'unverified', 'session_date': day, 'used': None,
+              'limit': None, 'remaining': None}
+    try:
+        cfg = config['ai']; limit = cfg['daily_request_limit']
+        if cfg['backend'] != 'codex_subscription' or isinstance(limit, bool) or not isinstance(limit, int) or not 1 <= limit <= 80:
+            return result
+        if decisions['status'] != 'integrity_checks_passed' or decisions['errors'] != {}:
+            return result
+        if not 0 <= (now-timestamp(decisions['as_of'])).total_seconds() <= 120:
+            return result
+        counts = decisions['subscription_attempts'].get(day, {})
+        if not isinstance(counts, dict) or not counts.keys() <= {'pending', 'failed', 'completed'}:
+            return result
+        if any(isinstance(v, bool) or not isinstance(v, int) or v < 0 for v in counts.values()):
+            return result
+        used = sum(counts.values())
+        result.update(status='available' if used < limit else 'exhausted',
+                      used=used, limit=limit, remaining=max(0, limit-used))
+    except (KeyError, TypeError, ValueError, AttributeError):
+        pass
+    return result
+
+
+def summarize(local, broker, telemetry, clock, model_matches, started_at, now, allowance):
     """Fail closed on incomplete checks; retain prior session incidents separately."""
     issues, past = [], []
     def fresh(item, seconds=120):
@@ -31,6 +57,8 @@ def summarize(local, broker, telemetry, clock, model_matches, started_at, now):
         issues.append('broker_reconciliation_requires_review')
     if model_matches is not True:
         issues.append('frozen_model_preflight_not_verified')
+    if allowance.get('status') != 'available' or allowance.get('session_date') != str(now.astimezone(NY).date()):
+        issues.append('local_model_allowance_not_available')
     def current_age(field):
         age = telemetry.get(field)
         if (isinstance(age, bool) or not isinstance(age, (int, float))
@@ -84,8 +112,10 @@ def summarize(local, broker, telemetry, clock, model_matches, started_at, now):
             'heartbeat_age_at_completion_seconds': heartbeat,
             'news_age_at_completion_seconds': news_age,
             'model_check': 'stored_fingerprint_only',
+            'local_model_allowance': allowance,
             'limits': 'Sequential point-in-time checks, not permission to trade or a future uptime guarantee. '
-                      'No fresh model request or subscription quota check; stored preflight does not prove current model access. '
+                      'Local request slots are not provider subscription quota. No fresh model request; '
+                      'stored preflight does not prove current model access. '
                       'No order submission, state repair, strategy changes or service restart.'}
 
 
@@ -104,13 +134,16 @@ def inspect(root, *, client=None):
     local = checked(lambda: readiness.inspect(root, config='paper_ai_v1'))
     broker = checked(lambda: broker_audit.audit(directory, cfg, client))
     telemetry = checked(lambda: health.audit(directory))
+    decisions = checked(lambda: decision_audit.audit(directory, cfg))
     clock = checked(client.clock)
     try:
         require_model_preflight(cfg, directory)
         model_matches = True
     except (OSError, ValueError, KeyError, TypeError):
         model_matches = False
-    return summarize(local, broker, telemetry, clock, model_matches, started, datetime.now(timezone.utc))
+    finished = datetime.now(timezone.utc)
+    allowance = local_allowance(decisions, cfg, finished)
+    return summarize(local, broker, telemetry, clock, model_matches, started, finished, allowance)
 
 
 def main():
