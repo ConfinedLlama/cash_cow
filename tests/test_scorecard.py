@@ -84,10 +84,10 @@ def test_fetch_never_calls_orders_and_rejects_pagination():
 
 
 def test_intent_acknowledgement_and_partial_fill_are_distinct():
-    p = {'client_order_id': 'fixture', 'symbol': 'SPY', 'side': 'buy', 'qty': '2'}
+    p = {'client_order_id': 'fixture', 'symbol': 'SPY', 'side': 'buy', 'qty': '2', 'type': 'limit', 'time_in_force': 'day'}
     state = {'orders': {'fixture': {'payload': p}}}
     assert execution_counts(state)['broker_responses'] == 0
-    state['orders']['fixture']['broker'] = dict(p, filled_qty='1', filled_avg_price='100')
+    state['orders']['fixture']['broker'] = dict(p, filled_qty='1', filled_avg_price='100', status='partially_filled')
     first = execution_counts(state)
     assert first['broker_responses'] == first['orders_with_fills'] == 1
     assert first['filled_buy_quantity'] == 1
@@ -126,3 +126,42 @@ def test_interval_disagreement_and_nonelapsed_accounting_rejected():
 @pytest.mark.parametrize('opened,closed', [('09:30:01', '16:00'), ('09:30+01:00', '16:00'), ('09:30', '16:00:01')])
 def test_calendar_clock_strings_are_exact(opened, closed):
     with pytest.raises(ValueError): interval(dict(DAY, open=opened, close=closed))
+
+
+def execution_fixture():
+    orders = {}
+    for cid, side, filled, price in [('entry', 'buy', '2', '101'), ('exit', 'sell', '1', '99')]:
+        p = {'client_order_id': cid, 'symbol': 'SPY', 'side': side, 'qty': '2', 'type': 'limit', 'time_in_force': 'day'}
+        orders[cid] = {'payload': p, 'created_at': '2026-11-04T15:10:02Z',
+                       'reference_quote': {'t': '2026-11-04T15:10:01Z', 'bp': 100, 'ap': 100},
+                       'broker': dict(p, filled_qty=filled, filled_avg_price=price,
+                                      status='filled' if filled == '2' else 'canceled')}
+    return {'orders': orders}
+
+
+def test_fill_quality_counts_partial_cancel_once_and_uses_signed_sides():
+    state = execution_fixture();result = execution_counts(state)
+    assert result['filled_notional_usd'] == 301
+    assert result['gross_turnover_fraction_of_initial_capital'] == pytest.approx(301/2000)
+    assert result['modeled_fill_cost_usd'] == pytest.approx(.8+.0002*301)
+    assert result['signed_quote_shortfall_bps'] == pytest.approx(100)
+    assert result['orders_with_usable_reference_quote'] == 2
+    assert execution_counts(state) == result
+
+
+def test_no_fills_or_missing_quotes_cannot_be_reported_as_zero_shortfall():
+    assert execution_counts({'orders': {}})['signed_quote_shortfall_bps'] is None
+    state = execution_fixture()
+    state['orders']['entry']['reference_quote'] = None
+    state['orders']['exit']['reference_quote']['t'] = '2026-11-04T15:00:00Z'
+    result = execution_counts(state)
+    assert result['orders_without_usable_reference_quote'] == 2
+    assert result['signed_quote_shortfall_bps'] is None
+    assert result['filled_notional_usd'] == 301
+
+
+def test_inconsistent_fill_or_other_symbol_is_rejected():
+    state = execution_fixture();state['orders']['exit']['broker']['status'] = 'filled'
+    with pytest.raises(ValueError, match='Filled status'): execution_counts(state)
+    state = execution_fixture();state['orders']['entry']['payload']['symbol'] = 'QQQ'
+    with pytest.raises(ValueError, match='Invalid intent'): execution_counts(state)

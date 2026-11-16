@@ -21,35 +21,70 @@ START, END = date(2026, 11, 4), date(2026, 12, 2)
 SOURCE = 'Alpaca GET /v2/stocks/bars; SPY; 1Min; iex; raw'
 
 
-def execution_counts(state):
+def execution_counts(state, capital=2000, max_quote_age_seconds=60):
     """Count cumulative order fills once, never count repeated polling as fills."""
+    capital, max_quote_age_seconds = finite(capital), finite(max_quote_age_seconds)
+    if capital <= 0 or max_quote_age_seconds <= 0:
+        raise ValueError('Invalid execution measurement configuration')
     orders = state['orders']
     if not isinstance(orders, dict):
         raise ValueError('Malformed order ledger')
     result = {'durable_intents': len(orders), 'broker_responses': 0,
               'orders_with_fills': 0, 'filled_buy_orders': 0, 'filled_sell_orders': 0,
-              'filled_buy_quantity': 0.0, 'filled_sell_quantity': 0.0}
+              'filled_buy_quantity': 0.0, 'filled_sell_quantity': 0.0,
+              'filled_notional_usd': 0.0, 'modeled_fill_cost_usd': 0.0,
+              'orders_with_usable_reference_quote': 0,
+              'orders_without_usable_reference_quote': 0}
+    shortfall, reference_notional = 0.0, 0.0
     for cid, order in orders.items():
         payload = order['payload']
         side = payload['side']
         requested = finite(payload['qty'])
-        if side not in ('buy', 'sell') or requested <= 0 or payload['client_order_id'] != cid:
+        if (side not in ('buy', 'sell') or requested <= 0 or payload['client_order_id'] != cid
+                or payload['symbol'] != 'SPY' or payload['type'] not in ('limit', 'market')
+                or payload['time_in_force'] != 'day'):
             raise ValueError('Invalid intent')
         broker = order.get('broker')
         if broker is None:
             continue  # Intent persisted before POST is not an acknowledged order.
-        if any(broker.get(k) != payload[k] for k in ('client_order_id', 'side', 'symbol')):
+        if any(broker.get(k) != payload[k] for k in ('client_order_id', 'side', 'symbol', 'type', 'time_in_force')):
             raise ValueError('Intent and broker response disagree')
         filled = finite(broker['filled_qty'])
         if not 0 <= filled <= requested or finite(broker['qty']) != requested:
             raise ValueError('Invalid cumulative fill')
+        if not isinstance(broker.get('status'), str) or not broker['status']:
+            raise ValueError('Missing broker status')
+        if broker['status'] == 'filled' and filled != requested:
+            raise ValueError('Filled status disagrees with cumulative quantity')
         result['broker_responses'] += 1
         if filled:
-            if finite(broker['filled_avg_price']) <= 0:
+            price = finite(broker['filled_avg_price'])
+            if price <= 0:
                 raise ValueError('Invalid fill price')
             result['orders_with_fills'] += 1
             result[f'filled_{side}_orders'] += 1
             result[f'filled_{side}_quantity'] += filled
+            result['filled_notional_usd'] += filled * price
+            result['modeled_fill_cost_usd'] += max(.40, .0035*filled) + .0002*filled*price
+            # Report only against an actual saved, fresh submission quote.
+            # Cumulative average fills count once, including canceled partials.
+            try:
+                quote = order['reference_quote']
+                bid, ask = finite(quote['bp']), finite(quote['ap'])
+                age = (timestamp(order['created_at'])-timestamp(quote['t'])).total_seconds()
+                if not 0 < bid <= ask or not -5 <= age <= max_quote_age_seconds:
+                    raise ValueError('Invalid reference quote')
+                reference_price = ask if side == 'buy' else bid
+            except (KeyError, ValueError, TypeError, AttributeError):
+                result['orders_without_usable_reference_quote'] += 1
+            else:
+                result['orders_with_usable_reference_quote'] += 1
+                shortfall += filled * (price-reference_price) * (1 if side == 'buy' else -1)
+                reference_notional += filled * reference_price
+    if not all(math.isfinite(v) for v in (shortfall, reference_notional, result['filled_notional_usd'], result['modeled_fill_cost_usd'])):
+        raise ValueError('Nonfinite execution aggregate')
+    result['gross_turnover_fraction_of_initial_capital'] = result['filled_notional_usd']/capital
+    result['signed_quote_shortfall_bps'] = shortfall/reference_notional*10000 if reference_notional else None
     return result
 
 
@@ -203,7 +238,7 @@ def main():
     decisions = decision_audit.audit(directory, cfg)
     operating = health.audit(directory)
     state_raw = (directory/'state.json').read_bytes()
-    executions = execution_counts(json.loads(state_raw))
+    executions = execution_counts(json.loads(state_raw), cfg['capital'], cfg['max_quote_age_seconds'])
     rows = evaluate(snapshot, json.loads(exported)['sessions'], datetime.now(timezone.utc), calendar)
     coverage = attendance.audit(directory, calendar, str(START))
     coverage_by_day = {row['date']: row['status'] for row in coverage['sessions']}

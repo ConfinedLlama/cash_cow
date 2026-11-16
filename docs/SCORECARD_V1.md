@@ -52,3 +52,16 @@ Old price snapshots remain readable and are not rewritten. Pricing, allocation
 and cost assumptions are unchanged. Attendance comes from the calendar audit,
 including unresolved exposure and operational errors; it is not certification
 of complete market-data coverage or profitability.
+
+November 16 execution measurements: cumulative fills count once per order,
+including canceled partial fills. Gross turnover is total buy plus sell filled
+notional divided by initial sleeve capital (not halved or annualized). Modeled
+fill costs use the existing per-order stress formula, not broker-reported fees.
+Signed quote shortfall compares cumulative average fill price with saved ask
+for buys and bid for sells; positive means worse execution. It is weighted by
+eligible reference notional. Quotes must pass the configured age bound at
+intent creation. Missing/invalid quotes are counted separately and excluded;
+zero eligible fills yields unavailable, never zero bps. Exits often have no
+saved reference quote. This metric includes price movement since submission;
+it is not an estimate of market impact or true live slippage. Broker identity,
+cash and position reconciliation remain independent checks.
