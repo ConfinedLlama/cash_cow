@@ -11,7 +11,8 @@ from cash_cow.paper.broker_audit import assess, audit
 
 def fixture():
     config = json.loads((Path(__file__).resolve().parents[1]/'configs/paper_v1.json').read_text())
-    account = {'id': 'PRIVATE_ACCOUNT', 'status': 'ACTIVE', 'trading_blocked': False, 'cash': '100000'}
+    account = {'id': 'PRIVATE_ACCOUNT', 'status': 'ACTIVE', 'trading_blocked': False,
+               'account_blocked': False, 'trade_suspended_by_user': False, 'cash': '100000'}
     state = {'orders': {}, 'account_fingerprint': hashlib.sha256(account['id'].encode()).hexdigest(),
              'initial_broker_cash': 100000, 'halt': None}
     return state, config, account
@@ -24,6 +25,17 @@ def test_flat_reconciliation_is_private_and_read_only():
     assert result['cash_difference_usd'] == 0 and result['sleeve_cash_usd'] == 2000
     assert 'PRIVATE' not in json.dumps(result)
     assert before == (state, cfg, account)
+
+
+@pytest.mark.parametrize('field', ['trading_blocked', 'account_blocked', 'trade_suspended_by_user'])
+@pytest.mark.parametrize('value', [True, None, 'false', 0, 'missing'])
+def test_all_broker_restrictions_must_be_explicitly_false(field, value):
+    state,cfg,a=fixture()
+    if value=='missing':a.pop(field)
+    else:a[field]=value
+    result=assess(state,cfg,a,[],[])
+    assert result['status']=='review_required'
+    assert 'account_inactive_or_blocked' in result['issues']
 
 
 @pytest.mark.parametrize('change,issue', [('cash','cash_ledger_mismatch'),('account','account_identity_mismatch'),

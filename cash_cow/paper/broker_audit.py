@@ -38,7 +38,10 @@ def assess(state, config, account, positions, open_orders):
         if not isinstance(account['id'], str) or not account['id']:raise ValueError('account')
         result['identity_matches'] = hashlib.sha256(account['id'].encode()).hexdigest() == state['account_fingerprint']
         if not result['identity_matches']:issues.append('account_identity_mismatch')
-        if account['status'] != 'ACTIVE' or account['trading_blocked'] is not False:
+        if account['status'] != 'ACTIVE' or any(
+            account.get(field) is not False
+            for field in ('trading_blocked', 'account_blocked', 'trade_suspended_by_user')
+        ):
             issues.append('account_inactive_or_blocked')
         if state.get('halt'):issues.append('journal_halted')
         if not isinstance(positions, list) or not isinstance(open_orders, list):raise ValueError('inventories')

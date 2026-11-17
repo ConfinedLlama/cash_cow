@@ -214,6 +214,11 @@ The wrapper catches transport/JSON failures. Passing checks do not establish
 atomic broker state, fresh news, model access, attendance, or trading performance;
 continue using the separate local health, readiness and model-preflight checks.
 
+Account readiness requires `trading_blocked`, `account_blocked` and
+`trade_suspended_by_user` to each be explicitly false, alongside ACTIVE status.
+Missing fields, nulls, numeric zero and strings are unverified, not a pass.
+This read-only audit cannot clear any broker restriction.
+
 The health audit's per-session `timeline` records the first logged operational
 problem or entry filter, first entry block, and first/last model-proposal polling
 event. It counts fixed problem categories and BUY/HOLD/EXIT poll events before
