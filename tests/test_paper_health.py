@@ -210,3 +210,19 @@ def test_unknown_problem_reason_never_leaks_and_no_problem_is_not_zero_time(tmp_
     result=audit(tmp_path,NOW)
     assert result['sessions']['2026-11-04']['timeline']['problem_event_counts']=={'other_entry_block':1}
     assert 'PRIVATE' not in json.dumps(result)
+
+
+@pytest.mark.parametrize('kind', ['flat', 'waiting_for_cancel', 'order_submitted'])
+def test_monitoring_gap_actions_are_visible_without_claiming_detection_time(tmp_path, kind):
+    state=fixture(tmp_path);opened=NOW-timedelta(hours=18)
+    state['sessions']['2026-11-04']={'open':opened.isoformat(),'close':(opened+timedelta(hours=6)).isoformat(),'blocked':'monitoring_gap'}
+    (tmp_path/'state.json').write_text(json.dumps(state))
+    at=(opened+timedelta(minutes=41)).isoformat()
+    events=[{'at':at,'kind':kind,'reason':'monitoring_gap'},
+            {'at':(opened+timedelta(minutes=42)).isoformat(),'kind':'flat','reason':'session_end'}]
+    (tmp_path/'events.jsonl').write_text('\n'.join(json.dumps(e) for e in events))
+    result=audit(tmp_path,NOW)['sessions']['2026-11-04']['timeline']
+    assert result['first_monitoring_gap_action_at']==at
+    assert result['first_problem_category']=='monitoring_gap'
+    assert result['problem_event_counts']=={'monitoring_gap':1}
+    assert result['first_entry_block_at'] is None  # Distinct event, not invented.

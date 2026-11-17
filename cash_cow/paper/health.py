@@ -44,6 +44,8 @@ def diagnostic_labels(event):
                   'asset_unavailable': 'asset_unavailable'}
         fault = labels.get(reason, 'other_entry_block') if isinstance(reason, str) else 'other_entry_block'
     elif kind == 'submission_uncertain':fault = 'submission_uncertain'
+    elif kind in {'flat', 'waiting_for_cancel', 'order_submitted'} and event.get('reason') == 'monitoring_gap':
+        fault = 'monitoring_gap'
     return fault, action
 
 
@@ -52,12 +54,14 @@ def session_timeline(records, opened, end):
     problems = [r for r in selected if r[2] is not None]
     proposals = [r for r in selected if r[1] == 'ai_proposal']
     blocks = [r for r in selected if r[1] == 'entry_blocked']
+    monitoring_blocks = [r for r in selected if r[2] == 'monitoring_gap']
     first = problems[0] if problems else None
     return {
         'problem_event_counts': dict(Counter(r[2] for r in problems)),
         'first_problem_event_at': first[0].isoformat() if first else None,
         'first_problem_category': first[2] if first else None,
         'first_entry_block_at': blocks[0][0].isoformat() if blocks else None,
+        'first_monitoring_gap_action_at': monitoring_blocks[0][0].isoformat() if monitoring_blocks else None,
         'first_proposal_event_at': proposals[0][0].isoformat() if proposals else None,
         'last_proposal_event_at': proposals[-1][0].isoformat() if proposals else None,
         'proposal_poll_actions': dict(Counter(r[3] for r in proposals)),

@@ -224,3 +224,10 @@ The journal's latest monitoring-gap timestamp may be overwritten by later gaps;
 use the immutable event stream for sequence. Corrupt, unknown or out-of-order
 events make the timeline unavailable rather than falsely showing no problems.
 Raw reason strings, model rationales, prices and identifiers are never echoed.
+
+The timeline also identifies `monitoring_gap` actions recorded as `flat`,
+`waiting_for_cancel` or `order_submitted`. `first_monitoring_gap_action_at`
+is the first logged action carrying that reason, not the onset of sleep or
+the first internal detection. A flat event is not a fill; ordinary session-end
+flattening is not classified as a monitoring fault. This preserves evidence
+when the session-state detection timestamp is overwritten by later gaps.
