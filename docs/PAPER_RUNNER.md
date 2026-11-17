@@ -236,3 +236,23 @@ is the first logged action carrying that reason, not the onset of sleep or
 the first internal detection. A flat event is not a fill; ordinary session-end
 flattening is not classified as a monitoring fault. This preserves evidence
 when the session-state detection timestamp is overwritten by later gaps.
+
+## Historical power evidence (read-only)
+
+Capture `pmset -g log` into an ignored `.local/daily/` evidence file, then use:
+
+```sh
+.venv/bin/python -m cash_cow.paper.power_audit \
+  --log .local/daily/YYYY-MM-DD-evidence/power.log \
+  --start 2026-11-16T22:15:00+08:00 --end 2026-11-17T05:15:00+08:00
+```
+
+Use the actual session window; the dates above are an example. The tool reads
+the saved log only and emits timestamps and fixed reason/power categories,
+never process details or raw log text. It separates Sleep, DarkWake and Wake,
+excludes Wake Requests/assertion messages, and retains the last recognized
+transition before the window. It flags invalid timestamps, chronology and
+future entries. Missing transitions do not establish uninterrupted uptime;
+DarkWake does not prove successful network/model work. Rotated logs may be
+incomplete. No duration or cause of trading failures is inferred. Keep raw
+logs private and correlate observations with the separate session timeline.
