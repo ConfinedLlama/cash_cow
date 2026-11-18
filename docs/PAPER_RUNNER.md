@@ -256,3 +256,11 @@ future entries. Missing transitions do not establish uninterrupted uptime;
 DarkWake does not prove successful network/model work. Rotated logs may be
 incomplete. No duration or cause of trading failures is inferred. Keep raw
 logs private and correlate observations with the separate session timeline.
+
+
+November 18 readiness check: the read-only local audit also queries the
+`AppleClamshellState` sensor through ioreg. Exactly one open-lid observation
+is required; closed, absent, malformed or conflicting readings require review.
+Only `open`, `closed` or `unknown` is emitted, never raw device information.
+This is an observation now, not evidence that the lid stayed open overnight
+or will remain open. No power settings or running strategy are changed.

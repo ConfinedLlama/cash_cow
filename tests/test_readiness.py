@@ -18,6 +18,7 @@ def inputs():
                 loaded='state = running\narguments = {\n'+'\n'.join(args)+'\n}\npid = 42\n',
                 process='/framework/Python -u -m cash_cow.paper run --config paper_ai_v1',
                 assertions="pid 43(caffeinate): PreventUserIdleSystemSleep named: x\n Details: behalf of Python (pid 42)\n",
+                lid='  |   "AppleClamshellState" = No\n',
                 battery="Now drawing from 'AC Power'\n 95%; charging;")
 
 
@@ -69,13 +70,13 @@ def test_command_failures_do_not_echo_output_or_mutate_files(tmp_path):
     assert {'service_unavailable', 'assertions_unavailable', 'power_unavailable'} <= set(result['issues'])
     assert 'private-secret' not in json.dumps(result)
     assert list(tmp_path.rglob('*')) == before
-    assert all(x[0] in ('/bin/launchctl', '/usr/bin/pmset') for x in commands)
+    assert all(x[0] in ('/bin/launchctl', '/usr/bin/pmset', '/usr/sbin/ioreg') for x in commands)
 
 
 def test_inspection_reads_only_fixed_commands(tmp_path):
     data = inputs(); directory = tmp_path/'Library/LaunchAgents'; directory.mkdir(parents=True)
     (directory/'com.cashcow.paper.plist').write_bytes(plistlib.dumps(data['plist']))
-    outputs = iter([data['loaded'], data['process'], data['assertions'], data['battery']])
+    outputs = iter([data['loaded'], data['process'], data['assertions'], data['battery'], data['lid']])
     calls = []
     def run(args, **kwargs):
         calls.append(args)
@@ -83,4 +84,21 @@ def test_inspection_reads_only_fixed_commands(tmp_path):
     result = inspect(data['root'], home=tmp_path, run=run)
     assert result['status'] == 'local_checks_passed'
     assert calls[1] == ['/bin/ps', '-p', '42', '-o', 'command=']
-    assert len(calls) == 4
+    assert len(calls) == 5
+
+
+@pytest.mark.parametrize('snapshot,state,issue', [
+    ('  "AppleClamshellState" = Yes\n', 'closed', 'lid_closed'),
+    ('', 'unknown', 'lid_state_not_verified'),
+    ('"AppleClamshellState" = private-secret', 'unknown', 'lid_state_not_verified'),
+    ('"AppleClamshellState" = No\n"AppleClamshellState" = Yes', 'unknown', 'lid_state_not_verified'),
+    ('  | "AppleClamshellState" = No\n  | "AppleClamshellState" = malformed', 'unknown', 'lid_state_not_verified'),
+    ('"AppleClamshellState" = Nope', 'unknown', 'lid_state_not_verified'),
+])
+def test_lid_must_be_verified_open_even_on_ac_with_owned_assertion(snapshot, state, issue):
+    args = inputs(); args['lid'] = snapshot
+    result = assess(**args)
+    assert result['lid_state'] == state
+    assert issue in result['issues']
+    assert result['status'] == 'review_required'
+    assert 'private-secret' not in json.dumps(result)

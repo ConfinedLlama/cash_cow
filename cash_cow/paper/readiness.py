@@ -16,7 +16,7 @@ import sys
 LABEL = 'com.cashcow.paper'
 
 
-def assess(root, config, plist, loaded, process, assertions, battery, stop=False):
+def assess(root, config, plist, loaded, process, assertions, battery, stop=False, lid=""):
     """Inspect supplied command snapshots; emit only fixed labels and numbers."""
     expected = ['/usr/bin/caffeinate', '-i', str(Path(root)/'.venv/bin/python'),
                 '-u', '-m', 'cash_cow.paper', 'run', '--config', config]
@@ -52,11 +52,17 @@ def assess(root, config, plist, loaded, process, assertions, battery, stop=False
     percent = int(pct[1]) if pct and 0 <= int(pct[1]) <= 100 else None
     if source != 'ac':
         issues.append('external_power_not_verified')
+    # A current open-lid observation is separate from the idle-sleep assertion.
+    # Missing, conflicting or malformed sensor output must not pass as open.
+    values = re.findall(r'^[ \t|]*"AppleClamshellState"[ \t]*=[ \t]*(.*?)[ \t]*$', lid, re.M)
+    lid_state = 'open' if values == ['No'] else 'closed' if values == ['Yes'] else 'unknown'
+    if lid_state != 'open':
+        issues.append('lid_closed' if lid_state == 'closed' else 'lid_state_not_verified')
     if stop:
         issues.append('stop_requested')
     return {'status': 'review_required' if issues else 'local_checks_passed',
             'issues': issues, 'worker_pid': pid, 'power_source': source,
-            'battery_percent': percent, 'worker_idle_sleep_assertion': owned_assertion,
+            'battery_percent': percent, 'lid_state': lid_state, 'worker_idle_sleep_assertion': owned_assertion,
             'limits': 'Point-in-time local checks only. Lid closure, forced sleep, shutdown and network failure remain possible. Broker reconciliation, telemetry freshness, loaded code identity and session coverage require separate checks. No trading permission or future uptime guarantee.'}
 
 
@@ -85,7 +91,8 @@ def inspect(root, config='paper_ai_v1', home=None, run=None):
     result = assess(root, config, plist, loaded, process,
                     command('assertions', ['/usr/bin/pmset', '-g', 'assertions']),
                     command('power', ['/usr/bin/pmset', '-g', 'batt']),
-                    (root/'data/telemetry'/config/'STOP').exists())
+                    (root/'data/telemetry'/config/'STOP').exists(),
+                    lid=command('lid', ['/usr/sbin/ioreg', '-r', '-k', 'AppleClamshellState', '-d', '4']))
     result['issues'].extend(failures)
     if failures:
         result['status'] = 'review_required'
