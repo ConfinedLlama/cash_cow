@@ -65,3 +65,12 @@ zero eligible fills yields unavailable, never zero bps. Exits often have no
 saved reference quote. This metric includes price movement since submission;
 it is not an estimate of market impact or true live slippage. Broker identity,
 cash and position reconciliation remain independent checks.
+
+
+November 18 decision attribution: every elapsed calendar row now includes
+unique AI record counts, pending/failed/completed statuses and completed
+BUY/SELL/HOLD counts from the integrity-checked decision audit. Repeated
+proposal polls and setup requests do not count. A valid archive with no
+records for that day shows zero decisions, not HOLD; failed or inconsistent
+evidence shows unavailable. This is stored-record evidence, not complete
+session attendance, actual fills or proof that no opportunity existed.

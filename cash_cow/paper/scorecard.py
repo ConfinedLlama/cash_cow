@@ -88,6 +88,30 @@ def execution_counts(state, capital=2000, max_quote_age_seconds=60):
     return result
 
 
+def session_decisions(decisions, day):
+    """Join validated unique records, never repeated polls or setup requests."""
+    unavailable = {'status': 'unavailable', 'unique_records': None,
+                   'record_statuses': None, 'completed_actions': None}
+    try:
+        if (decisions['status'] != 'integrity_checks_passed' or decisions['errors'] != {}
+                or date.fromisoformat(day).isoformat() != day):
+            return unavailable
+        counts = decisions['by_session'].get(day, {})
+        statuses, actions = ('pending', 'failed', 'completed'), ('BUY', 'SELL', 'HOLD')
+        if not isinstance(counts, dict) or not counts.keys() <= set(statuses+actions):
+            return unavailable
+        if any(isinstance(v, bool) or not isinstance(v, int) or v < 0 for v in counts.values()):
+            return unavailable
+        if sum(counts.get(k, 0) for k in actions) != counts.get('completed', 0):
+            return unavailable
+        return {'status': 'integrity_checked',
+                'unique_records': sum(counts.get(k, 0) for k in statuses),
+                'record_statuses': {k: counts.get(k, 0) for k in statuses},
+                'completed_actions': {k: counts.get(k, 0) for k in actions}}
+    except (KeyError, ValueError, TypeError, AttributeError):
+        return unavailable
+
+
 def interval(row):
     day = date.fromisoformat(row['date'])
     if not START <= day <= END:
@@ -244,6 +268,7 @@ def main():
     coverage_by_day = {row['date']: row['status'] for row in coverage['sessions']}
     for row in rows:
         row['coverage'] = coverage_by_day[row['session_date']]
+        row['ai_decisions'] = session_decisions(decisions, row['session_date'])
     print(json.dumps({'version': 'scorecard_v1.1', 'as_of': iso(datetime.now(timezone.utc)),
         'reference_source_sha256': hashlib.sha256(raw).hexdigest(),
         'calendar_source_sha256': hashlib.sha256(calendar_raw).hexdigest(),

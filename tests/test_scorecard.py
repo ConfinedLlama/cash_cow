@@ -3,7 +3,7 @@ from datetime import date, datetime, timedelta, timezone
 from copy import deepcopy
 import pytest
 
-from cash_cow.paper.scorecard import SOURCE, evaluate, execution_counts, fetch, interval, reference
+from cash_cow.paper.scorecard import SOURCE, evaluate, execution_counts, fetch, interval, reference, session_decisions
 from cash_cow.paper.client import iso
 
 DAY = {'date': '2026-11-04', 'open': '09:30', 'close': '16:00'}
@@ -165,3 +165,32 @@ def test_inconsistent_fill_or_other_symbol_is_rejected():
     with pytest.raises(ValueError, match='Filled status'): execution_counts(state)
     state = execution_fixture();state['orders']['entry']['payload']['symbol'] = 'QQQ'
     with pytest.raises(ValueError, match='Invalid intent'): execution_counts(state)
+
+
+def test_session_decisions_distinguish_absence_from_holds_and_polling():
+    evidence = {'status': 'integrity_checks_passed', 'errors': {},
+                'by_session': {'2026-11-05': {'completed': 2, 'HOLD': 1, 'BUY': 1, 'failed': 1}},
+                'proposal_events': 200, 'preflight_attempts': 3}
+    result = session_decisions(evidence, '2026-11-05')
+    assert result['unique_records'] == 3
+    assert result['record_statuses'] == {'pending': 0, 'failed': 1, 'completed': 2}
+    assert result['completed_actions'] == {'BUY': 1, 'SELL': 0, 'HOLD': 1}
+    missing = session_decisions(evidence, '2026-11-06')
+    assert missing['unique_records'] == 0
+    assert missing['completed_actions']['HOLD'] == 0
+
+
+@pytest.mark.parametrize('change', ['failed_audit', 'missing_map', 'negative', 'boolean', 'inconsistent', 'unknown'])
+def test_invalid_decision_evidence_does_not_become_zero_or_hold(change):
+    evidence = {'status': 'integrity_checks_passed', 'errors': {},
+                'by_session': {'2026-11-05': {'completed': 2, 'HOLD': 2}}}
+    if change == 'failed_audit': evidence['errors'] = {'invalid_decision_record': 1}
+    if change == 'missing_map': del evidence['by_session']
+    if change == 'negative': evidence['by_session']['2026-11-05']['failed'] = -1
+    if change == 'boolean': evidence['by_session']['2026-11-05']['pending'] = True
+    if change == 'inconsistent': evidence['by_session']['2026-11-05']['HOLD'] = 1
+    if change == 'unknown': evidence['by_session']['2026-11-05']['private-rationale'] = 1
+    result = session_decisions(evidence, '2026-11-05')
+    assert result['status'] == 'unavailable'
+    assert result['unique_records'] is None and result['completed_actions'] is None
+    assert 'private' not in str(result)
