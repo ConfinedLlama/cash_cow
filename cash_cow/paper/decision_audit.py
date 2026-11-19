@@ -5,7 +5,7 @@ the subscription ledger and causal packet times without emitting private text.
 """
 import argparse
 from collections import Counter
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 import hashlib
 import json
 from pathlib import Path
@@ -52,6 +52,14 @@ def audit(directory, config, now=None):
             slot = hashlib.sha256(f"{config['version']}:{context['features']['bar']}:{context['position_qty']}".encode()).hexdigest()[:24]
             if path.stem != slot:
                 raise ValueError()
+            # A correct hash and fresh quote cannot establish feature causality.
+            # The frozen signal identifies the final one-minute bar of a fully
+            # completed five-minute interval in the current exchange date.
+            bar = timestamp(context['features']['bar']).astimezone(ZoneInfo('America/New_York'))
+            if (bar.second or bar.microsecond or bar.minute % 5 != 4
+                    or bar.astimezone(ZoneInfo('America/New_York')).date().isoformat() != day
+                    or bar + timedelta(minutes=1) > observed):
+                errors['invalid_feature_bar_timing'] += 1
             status = record['status']
             if status not in {'pending', 'failed', 'completed'}:
                 raise ValueError()

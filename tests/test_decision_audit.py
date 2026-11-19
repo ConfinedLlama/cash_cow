@@ -146,3 +146,29 @@ def test_audited_model_actions_survive_scorecard_join(tmp_path, action):
     assert row['unique_records'] == 1
     assert row['completed_actions'][action] == 1
     assert 'SELL' not in row['completed_actions']
+
+
+@pytest.mark.parametrize('bar', [
+    '2026-11-05T16:04:00Z',  # Future five-minute boundary.
+    '2026-11-05T15:59:00Z',  # Its final minute has not closed at observation.
+    '2026-11-04T15:54:00Z',  # Previous session, despite a matching record hash.
+    '2026-11-05T15:53:00Z',  # Not the final minute of a five-minute interval.
+    '2026-11-05T15:54:01Z',  # Not aligned to a minute.
+])
+def test_feature_bar_timing_is_independent_of_hash_and_quote_validity(tmp_path, bar):
+    old_slot, record = fixture(tmp_path)
+    record['context']['features']['bar'] = bar
+    slot = hashlib.sha256(f"paper_ai_v1:{bar}:0.0".encode()).hexdigest()[:24]
+    (tmp_path/'ai_decisions'/f'{old_slot}.json').unlink()
+    write(tmp_path/'ai_decisions'/f'{slot}.json', record)
+    usage = json.loads((tmp_path/'ai_subscription_usage.json').read_text())
+    usage['2026-11-05'][slot] = usage['2026-11-05'].pop(old_slot)
+    write(tmp_path/'ai_subscription_usage.json', usage)
+    events = [json.loads(line) for line in (tmp_path/'events.jsonl').read_text().splitlines()]
+    for event in events:
+        event['decision_id'] = slot
+    (tmp_path/'events.jsonl').write_text('\n'.join(json.dumps(event) for event in events))
+    result = audit(tmp_path, CONFIG, NOW)
+    assert result['status'] == 'review_required'
+    assert result['errors']['invalid_feature_bar_timing'] == 1
+    assert result['unique_records'] == 1  # Preserve the invalid trial evidence.

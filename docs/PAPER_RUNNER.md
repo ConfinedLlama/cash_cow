@@ -264,3 +264,12 @@ is required; closed, absent, malformed or conflicting readings require review.
 Only `open`, `closed` or `unknown` is emitted, never raw device information.
 This is an observation now, not evidence that the lid stayed open overnight
 or will remain open. No power settings or running strategy are changed.
+
+
+November 19 evidence check: the read-only decision audit independently verifies
+that each saved feature bar is minute-aligned, the final minute of a five-minute
+interval, in the packet's New York session date, and fully closed before the
+packet observation. Valid hashes/fresh quotes alone do not establish feature
+causality. Invalid timing requires review while the original record remains in
+the counts and private archive. This does not change runtime signal generation
+or certify that every underlying feature value was calculated correctly.
