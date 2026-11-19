@@ -14,6 +14,7 @@ from cash_cow.daily_report import load_performance
 from .client import PaperClient, iso, timestamp
 from . import attendance, decision_audit, health
 from .broker_audit import finite
+from .ai import SCHEMA
 
 ROOT = Path(__file__).resolve().parents[2]
 NY = ZoneInfo('America/New_York')
@@ -97,7 +98,8 @@ def session_decisions(decisions, day):
                 or date.fromisoformat(day).isoformat() != day):
             return unavailable
         counts = decisions['by_session'].get(day, {})
-        statuses, actions = ('pending', 'failed', 'completed'), ('BUY', 'SELL', 'HOLD')
+        statuses = ('pending', 'failed', 'completed')
+        actions = tuple(SCHEMA['properties']['action']['enum'])
         if not isinstance(counts, dict) or not counts.keys() <= set(statuses+actions):
             return unavailable
         if any(isinstance(v, bool) or not isinstance(v, int) or v < 0 for v in counts.values()):

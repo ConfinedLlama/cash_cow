@@ -174,7 +174,7 @@ def test_session_decisions_distinguish_absence_from_holds_and_polling():
     result = session_decisions(evidence, '2026-11-05')
     assert result['unique_records'] == 3
     assert result['record_statuses'] == {'pending': 0, 'failed': 1, 'completed': 2}
-    assert result['completed_actions'] == {'BUY': 1, 'SELL': 0, 'HOLD': 1}
+    assert result['completed_actions'] == {'BUY': 1, 'EXIT': 0, 'HOLD': 1}
     missing = session_decisions(evidence, '2026-11-06')
     assert missing['unique_records'] == 0
     assert missing['completed_actions']['HOLD'] == 0

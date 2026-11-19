@@ -127,3 +127,22 @@ def test_setup_diagnostics_are_separate_and_bad_tokens_are_flagged(tmp_path):
     assert 'market_usage_without_decision' not in result['errors']
     assert result['errors']['invalid_token_usage'] == 1
     assert result['completed_actions'] == {'HOLD': 1}
+
+
+@pytest.mark.parametrize('action', ['BUY', 'HOLD', 'EXIT'])
+def test_audited_model_actions_survive_scorecard_join(tmp_path, action):
+    from cash_cow.paper.scorecard import session_decisions
+    slot, record = fixture(tmp_path)
+    record['proposal']['action'] = action
+    write(tmp_path/'ai_decisions'/f'{slot}.json', record)
+    events = [json.loads(line) for line in (tmp_path/'events.jsonl').read_text().splitlines()]
+    for event in events:
+        event['action'] = action
+    (tmp_path/'events.jsonl').write_text('\n'.join(json.dumps(event) for event in events))
+    audited = audit(tmp_path, CONFIG, NOW)
+    assert audited['status'] == 'integrity_checks_passed'
+    row = session_decisions(audited, '2026-11-05')
+    assert row['status'] == 'integrity_checked'
+    assert row['unique_records'] == 1
+    assert row['completed_actions'][action] == 1
+    assert 'SELL' not in row['completed_actions']

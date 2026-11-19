@@ -69,8 +69,17 @@ cash and position reconciliation remain independent checks.
 
 November 18 decision attribution: every elapsed calendar row now includes
 unique AI record counts, pending/failed/completed statuses and completed
-BUY/SELL/HOLD counts from the integrity-checked decision audit. Repeated
+BUY/EXIT/HOLD counts from the integrity-checked decision audit. Repeated
 proposal polls and setup requests do not count. A valid archive with no
 records for that day shows zero decisions, not HOLD; failed or inconsistent
 evidence shows unavailable. This is stored-record evidence, not complete
 session attendance, actual fills or proof that no opportunity existed.
+
+
+November 19 correction: decision labels now come from the frozen AI response
+schema. The initial per-session join incorrectly used SELL instead of EXIT,
+which would have made a valid EXIT record unavailable. Broker order sides
+remain buy/sell; model decisions remain BUY/HOLD/EXIT. Contract tests pass
+actual decision-audit output through the scorecard for all three model actions.
+Previously observed HOLD counts and benchmark prices are unchanged. No prompt,
+configuration, order side or running decision/execution behavior was altered.
