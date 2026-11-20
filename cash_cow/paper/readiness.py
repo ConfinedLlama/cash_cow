@@ -4,6 +4,7 @@ No broker/model calls, writes, service restarts or power-setting changes.
 Raw service output can contain environment values and must never be printed.
 """
 import argparse
+import hashlib
 from datetime import datetime, timezone
 import json
 import os
@@ -93,6 +94,29 @@ def inspect(root, config='paper_ai_v1', home=None, run=None):
                     command('power', ['/usr/bin/pmset', '-g', 'batt']),
                     (root/'data/telemetry'/config/'STOP').exists(),
                     lid=command('lid', ['/usr/sbin/ioreg', '-r', '-k', 'AppleClamshellState', '-d', '4']))
+    # Join the selected telemetry owner to the observed launchd worker.
+    # The recorded start is not an OS uptime measurement or a restart cause.
+    now = datetime.now(timezone.utc)
+    result['worker_recorded_started_at'] = None
+    result['process_manifest_sha256'] = None
+    try:
+        raw = (root/'data/telemetry'/config/'process.json').read_bytes()
+        result['process_manifest_sha256'] = hashlib.sha256(raw).hexdigest()
+        manifest = json.loads(raw)
+        pid = manifest['pid']
+        started = datetime.fromisoformat(manifest['started_at'].replace('Z', '+00:00'))
+        if (type(pid) is not int or pid <= 0 or started.tzinfo is None
+                or started > now):
+            raise ValueError('Invalid process manifest')
+        if pid != result['worker_pid']:
+            failures.append('process_manifest_pid_mismatch')
+        else:
+            result['worker_recorded_started_at'] = started.astimezone(timezone.utc).isoformat()
+    except OSError:
+        failures.append('process_manifest_unavailable')
+    except (ValueError, TypeError, KeyError, AttributeError, UnicodeError):
+        failures.append('process_manifest_invalid')
+    result['limits'] += ' Recorded process start is self-reported metadata, not continuous uptime or proof against PID reuse; snapshots may race a restart.'
     result['issues'].extend(failures)
     if failures:
         result['status'] = 'review_required'

@@ -9,9 +9,8 @@ import pytest
 from cash_cow.paper.readiness import assess, inspect
 
 
-def inputs():
-    root = Path('/fixture')
-    args = ['/usr/bin/caffeinate', '-i', '/fixture/.venv/bin/python',
+def inputs(root=Path('/fixture')):
+    args = ['/usr/bin/caffeinate', '-i', str(root/'.venv/bin/python'),
             '-u', '-m', 'cash_cow.paper', 'run', '--config', 'paper_ai_v1']
     return dict(root=root, config='paper_ai_v1',
                 plist={'Label': 'com.cashcow.paper', 'ProgramArguments': args, 'WorkingDirectory': str(root)},
@@ -74,7 +73,10 @@ def test_command_failures_do_not_echo_output_or_mutate_files(tmp_path):
 
 
 def test_inspection_reads_only_fixed_commands(tmp_path):
-    data = inputs(); directory = tmp_path/'Library/LaunchAgents'; directory.mkdir(parents=True)
+    data = inputs(tmp_path); directory = tmp_path/'Library/LaunchAgents'; directory.mkdir(parents=True)
+    manifest = tmp_path/'data/telemetry/paper_ai_v1/process.json'
+    manifest.parent.mkdir(parents=True)
+    manifest.write_text(json.dumps({'pid': 42, 'started_at': '2026-11-19T01:00:00+00:00'}))
     (directory/'com.cashcow.paper.plist').write_bytes(plistlib.dumps(data['plist']))
     outputs = iter([data['loaded'], data['process'], data['assertions'], data['battery'], data['lid']])
     calls = []
@@ -85,6 +87,8 @@ def test_inspection_reads_only_fixed_commands(tmp_path):
     assert result['status'] == 'local_checks_passed'
     assert calls[1] == ['/bin/ps', '-p', '42', '-o', 'command=']
     assert len(calls) == 5
+    assert result['worker_recorded_started_at'] == '2026-11-19T01:00:00+00:00'
+    assert len(result['process_manifest_sha256']) == 64
 
 
 @pytest.mark.parametrize('snapshot,state,issue', [
@@ -102,3 +106,32 @@ def test_lid_must_be_verified_open_even_on_ac_with_owned_assertion(snapshot, sta
     assert issue in result['issues']
     assert result['status'] == 'review_required'
     assert 'private-secret' not in json.dumps(result)
+
+
+@pytest.mark.parametrize('manifest,issue', [
+    ({'pid': 99, 'started_at': '2026-11-19T01:00:00+00:00'}, 'process_manifest_pid_mismatch'),
+    ({'pid': 42, 'started_at': '2099-11-19T01:00:00+00:00'}, 'process_manifest_invalid'),
+    ({'pid': True, 'started_at': '2026-11-19T01:00:00+00:00'}, 'process_manifest_invalid'),
+    ({'pid': 42, 'started_at': '2026-11-19T01:00:00'}, 'process_manifest_invalid'),
+    (['private-secret'], 'process_manifest_invalid'),
+    (None, 'process_manifest_unavailable'),
+])
+def test_inspection_rejects_stale_or_unverifiable_process_manifest(tmp_path, manifest, issue):
+    # Exercise the public inspection path with real files and OS-command fixtures.
+    # A healthy launchd process must not mask stale or corrupt telemetry ownership.
+    data = inputs(tmp_path)
+    service = tmp_path/'Library/LaunchAgents/com.cashcow.paper.plist'
+    service.parent.mkdir(parents=True)
+    service.write_bytes(plistlib.dumps(data['plist']))
+    process = tmp_path/'data/telemetry/paper_ai_v1/process.json'
+    process.parent.mkdir(parents=True)
+    if manifest is not None:
+        process.write_text(json.dumps(manifest))
+    before = {p: p.read_bytes() for p in tmp_path.rglob('*') if p.is_file()}
+    outputs = iter([data['loaded'], data['process'], data['assertions'], data['battery'], data['lid']])
+    result = inspect(tmp_path, home=tmp_path, run=lambda *a, **kw: SimpleNamespace(returncode=0, stdout=next(outputs)))
+    assert result['status'] == 'review_required'
+    assert issue in result['issues']
+    assert result.get('worker_recorded_started_at') is None
+    assert 'private-secret' not in json.dumps(result)
+    assert before == {p: p.read_bytes() for p in tmp_path.rglob('*') if p.is_file()}

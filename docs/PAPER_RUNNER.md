@@ -273,3 +273,13 @@ packet observation. Valid hashes/fresh quotes alone do not establish feature
 causality. Invalid timing requires review while the original record remains in
 the counts and private archive. This does not change runtime signal generation
 or certify that every underlying feature value was calculated correctly.
+
+
+## November 20: process ownership in readiness checks
+
+The read-only readiness command now joins the selected telemetry directory's `process.json` PID to the worker observed through launchd and ps.
+A missing, unreadable, malformed, future-dated or mismatched process record requires review even if the service otherwise appears healthy.
+It emits the matching record's UTC start time and source hash to help identify a changed worker across daily observations.
+The timestamp is self-reported metadata, not proof of continuous uptime, OS process birth time, absence of PID reuse or a cause of restart.
+A restart can race these sequential reads; repeat the inspection before diagnosing a mismatch, and never rewrite ownership records to make a check pass.
+This changes only maintenance diagnostics, with no runner, strategy, prompt, risk or deployment change.
