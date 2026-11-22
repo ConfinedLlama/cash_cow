@@ -13,6 +13,20 @@ from cash_cow.data import ROOT, sha256
 from .data import NY
 
 
+def missing_intervals(index):
+    """Group consecutive absent minutes; end is exclusive, not a fill time."""
+    intervals = []
+    for timestamp in index:
+        if intervals and intervals[-1]['end_exclusive'] == timestamp.isoformat():
+            intervals[-1]['end_exclusive'] = (timestamp+pd.Timedelta(minutes=1)).isoformat()
+            intervals[-1]['minutes'] += 1
+        else:
+            intervals.append({'start': timestamp.isoformat(),
+                              'end_exclusive': (timestamp+pd.Timedelta(minutes=1)).isoformat(),
+                              'minutes': 1})
+    return intervals
+
+
 def diagnose(minute_index, daily_close, reference_close, start, end):
     """Use exchange-local dates and an exclusive end, retaining all gaps."""
     start, end = pd.Timestamp(start), pd.Timestamp(end)
@@ -20,7 +34,8 @@ def diagnose(minute_index, daily_close, reference_close, start, end):
             or end != end.normalize() or start >= end or end > pd.Timestamp('2025-01-01')):
         raise ValueError('Invalid historical diagnostic interval')
     if (minute_index.empty or minute_index.tz is None or minute_index.has_duplicates
-            or minute_index.hasnans or not minute_index.is_monotonic_increasing):
+            or minute_index.hasnans or not minute_index.is_monotonic_increasing
+            or not minute_index.equals(minute_index.floor('min'))):
         raise ValueError('Invalid minute timestamps')
     minute_index = minute_index.tz_convert(NY)
     for series in (daily_close, reference_close):
@@ -60,6 +75,7 @@ def diagnose(minute_index, daily_close, reference_close, start, end):
         'expected_regular_minutes': len(expected),
         'missing_regular_minutes': len(missing),
         'missing_minutes_by_session': {str(k): int(v) for k, v in gap_counts.items()},
+        'missing_intervals': missing_intervals(missing),
         'minute_rows_outside_local_date_interval': int(outside.sum()),
         'missing_daily_sessions': [str(d.date()) for d in missing_daily],
         'unexpected_daily_sessions': [str(d.date()) for d in extra_daily],

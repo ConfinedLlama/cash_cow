@@ -47,13 +47,29 @@ def test_missing_daily_and_reference_dates_are_explicit():
 
 def test_invalid_timestamps_and_reserved_interval_fail_closed():
     minutes, daily, reference = inputs()
-    for bad in (minutes.tz_localize(None), minutes.append(minutes[:1]), minutes[::-1]):
+    off_grid = minutes.append(pd.DatetimeIndex([minutes[0]+pd.Timedelta(seconds=30)])).sort_values()
+    for bad in (minutes.tz_localize(None), minutes.append(minutes[:1]), minutes[::-1], off_grid):
         with pytest.raises(ValueError, match='timestamps'):
             diagnose(bad, daily, reference, '2022-11-23', '2022-11-26')
     with pytest.raises(ValueError, match='interval'):
         diagnose(minutes, daily, reference, '2022-11-23', '2025-01-02')
     with pytest.raises(ValueError, match='daily close'):
         diagnose(minutes, daily.iloc[::-1], reference, '2022-11-23', '2022-11-26')
+
+
+def test_missing_intervals_preserve_separate_runs_and_calendar_boundaries():
+    minutes, daily, reference = inputs()
+    # Two consecutive minutes, a later isolated minute, and gaps straddling a holiday.
+    removed = [0, 1, 5, 389, 390]
+    result = diagnose(minutes.delete(removed), daily, reference, '2022-11-23', '2022-11-26')
+    intervals = result['missing_intervals']
+    assert [x['minutes'] for x in intervals] == [2, 1, 1, 1]
+    rebuilt = pd.DatetimeIndex([], tz=minutes.tz)
+    for interval in intervals:
+        rebuilt = rebuilt.append(pd.date_range(interval['start'], interval['end_exclusive'],
+                                              freq='min', inclusive='left'))
+    assert rebuilt.tz_convert(minutes.tz).equals(minutes[removed])
+    assert sum(x['minutes'] for x in intervals) == result['missing_regular_minutes']
 
 
 def test_cache_audit_reads_only_verified_inputs_and_never_repairs(tmp_path):
