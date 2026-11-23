@@ -1,0 +1,14 @@
+{
+  "purpose": "Retrospective gap diagnosis only; no validation exemption or model input",
+  "source": "https://www.nyse.com/publicdocs/nyse/markets/nyse/Report_of_the_Market-Wide_Circuit_Breaker_Working_Group.pdf",
+  "published": "2021-03-31",
+  "verified_on": "2026-11-23",
+  "source_pages": [4, 5],
+  "limits": "Market-wide trigger to beginning of reopening auctions, not each symbol's actual reopening; not an exhaustive halt database",
+  "halts": [
+    {"start": "2020-03-09T09:34:13-04:00", "end_exclusive": "2020-03-09T09:49:13-04:00"},
+    {"start": "2020-03-12T09:35:44-04:00", "end_exclusive": "2020-03-12T09:50:44-04:00"},
+    {"start": "2020-03-16T09:30:01-04:00", "end_exclusive": "2020-03-16T09:45:01-04:00"},
+    {"start": "2020-03-18T12:56:17-04:00", "end_exclusive": "2020-03-18T13:11:17-04:00"}
+  ]
+}
