@@ -161,28 +161,32 @@ def research_status(root: Path) -> list[str]:
             lines.append(f"- {version}: recorded verification did not pass.")
             continue
         count = result.get("runs", "unspecified")
-        lines.append(f"- {version}: {count} historical simulations; recorded accounting verification passed. Source: `{relative}/VERIFICATION.json`.")
+        lines += [f"- {version}: {count} historical simulations; recorded accounting verification passed.",
+                  f"  Source: `{relative}/VERIFICATION.json`."]
     return lines
 
 
 def render_report(root: Path, day: date, performance: dict | None = None) -> str:
     commits = commits_for_day(root, day)
-    lines = [f"# Daily report — {day.isoformat()} (Asia/Singapore)", "",
+    lines = [f"# Daily report - {day.isoformat()} (Asia/Singapore)", "",
              f"Snapshot HEAD: `{git(root, 'rev-parse', 'HEAD')}`.", "",
              "## Commits present when this report was generated", ""]
     for commit in commits:
         subject = commit["subject"].replace("[", "\\[").replace("]", "\\]")
-        lines.append(f"- [`{commit['sha'][:7]}`](https://github.com/ConfinedLlama/cash_cow/commit/{commit['sha']}) — {subject}")
+        lines.append(f"- [`{commit['sha'][:7]}`](https://github.com/ConfinedLlama/cash_cow/commit/{commit['sha']}) - {subject}")
     if not commits:
         lines.append("No commits for this Singapore calendar day at generation time.")
-    lines += ["", "The final report commit cannot contain its own hash. Its scope is documented below; the daily chat summary includes its hash and push verification.",
+    lines += ["", "The final report commit cannot contain its own hash.",
+              "Its scope is documented below; the daily chat summary includes its hash and push verification.",
               "", "## Performance evidence", ""]
     if performance is None:
-        lines += ["No paper/live session telemetry was supplied. Daily P&L, fills, slippage and drawdown are unavailable; historical results are not today's trading results."]
+        lines += ["No paper/live session telemetry was supplied.",
+                  "Daily P&L, fills, slippage and drawdown are unavailable; historical results are not today's trading results."]
     else:
         p = performance
         lines += [f"Mode: **{p['mode']}**; strategy: `{p['strategy_id']}`; source SHA-256: `{p['sha256']}`.", "",
-                  f"Observed sessions: {p['sessions']} ({p['first_session']} through {p['last_session']}). Freshness and exchange-session coverage require review.", "",
+                  f"Observed sessions: {p['sessions']} ({p['first_session']} through {p['last_session']}).",
+                  "Freshness and exchange-session coverage require review.", "",
                   f"- Last observed session return: {p['last_session_return']:.3%}",
                   f"- Observed compounded accounting return: {p['observed_return']:.3%}",
                   f"- Observed net P&L: {p['observed_net_pnl']:.2f} account currency units",
@@ -192,20 +196,23 @@ def render_report(root: Path, day: date, performance: dict | None = None) -> str
         lines += [f"- {month}: {value:.3%}" for month, value in p["observed_monthly_returns"].items()]
         coverage = p.get('coverage')
         lines += ["", "### Session coverage", "",
-                  "Accounting returns retain incomplete days and losses. They are not evidence of complete strategy evaluation.", ""]
+                  "Accounting returns retain incomplete days and losses.",
+                  "They are not evidence of complete strategy evaluation.", ""]
         if coverage and coverage['state_sha256']:
             lines += [f"Coverage state SHA-256: `{coverage['state_sha256']}`.", "",
                       "| Session | Local coverage |", "|---|---|"]
             lines += [f"| {r['session_date']} | {r['coverage']} |" for r in coverage['sessions']]
         else:
             lines.append("Coverage state not supplied: every observed session is **unverified**.")
-        lines += ["", "No local block recorded is not verified complete attendance. Independently check exchange sessions, event gaps, data coverage, account/strategy identity and broker reconciliation. Full-month statistics remain unavailable without that evidence."]
+        lines += ["", "No local block recorded is not verified complete attendance.",
+                  "Independently check exchange sessions, event gaps, data coverage, account/strategy identity and broker reconciliation.",
+                  "Full-month statistics remain unavailable without that evidence."]
         if p.get("cost_basis"):
             lines += ["", f"Cost basis supplied with telemetry: {p['cost_basis']}"]
         lines += ["", "Input consistency was checked, but broker reconciliation and source authenticity must be verified separately."]
     lines += ["", "## Historical research status", "", *research_status(root), "",
               "Recorded historical checks are not fresh reruns or evidence of a live trading edge.", "",
-              "## Engineering review — complete before committing", "",
+              "## Engineering review - complete before committing", "",
               "- Changes and rationale: PENDING", "- Tests and experiments actually run: PENDING",
               "- Rejected hypotheses and limitations: PENDING", "- Blockers and next step: PENDING",
               "- Final report commit scope and daily commit target: PENDING", ""]
