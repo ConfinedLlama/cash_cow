@@ -44,9 +44,12 @@ def summarize_response(body, start, end):
                       'records_returned' if rows else 'no_records_returned'}
 
 
-def audit_snapshot(manifest_path):
+def audit_snapshot(manifest_path, now=None):
     """Verify private response hashes and request metadata without networking."""
     manifest_path = Path(manifest_path)
+    now = pd.Timestamp.now(tz='UTC') if now is None else pd.Timestamp(now)
+    if pd.isna(now) or now.tz is None:
+        raise ValueError('Audit time must include timezone')
     manifest = json.loads(manifest_path.read_text())
     if (manifest['endpoint'] != 'https://data.alpaca.markets/v2/stocks/trades'
             or manifest['symbol'] != 'SPY' or manifest['feed'] != 'sip'):
@@ -63,7 +66,8 @@ def audit_snapshot(manifest_path):
         if probe['http_status'] != 200:
             raise ValueError('Probe response was not successful')
         observed = pd.Timestamp(probe['observed_at'])
-        if pd.isna(observed) or observed.tz is None or observed < pd.Timestamp(probe['end_exclusive']):
+        if (pd.isna(observed) or observed.tz is None or observed > now
+                or observed < pd.Timestamp(probe['end_exclusive'])):
             raise ValueError('Invalid observation timestamp')
         summary = summarize_response(json.loads(path.read_text()), probe['start'], probe['end_exclusive'])
         results.append({'start': probe['start'], 'end_exclusive': probe['end_exclusive'],
@@ -80,7 +84,13 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('manifest', type=Path)
     args = parser.parse_args()
-    result = audit_snapshot(args.manifest)
+    try:
+        result = audit_snapshot(args.manifest)
+    except (OSError, ValueError, TypeError, KeyError, AttributeError, OverflowError):
+        # Parser exceptions can embed private payload values or local paths.
+        print(json.dumps({'status': 'review_required',
+                          'issues': ['invalid_or_unreadable_probe_evidence']}))
+        return 2
     print(json.dumps(result, indent=2, allow_nan=False))
     return 2 if any(not row['pagination_complete'] for row in result['probes']) else 0
 

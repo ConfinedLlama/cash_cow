@@ -62,3 +62,32 @@ def test_snapshot_rejects_corruption_missing_provenance_and_duplicate_files(tmp_
     manifest['feed'] = 'sip'; meta.write_text(json.dumps(manifest)); path.write_text('{}')
     with pytest.raises(ValueError, match='hash'):
         audit_snapshot(meta)
+
+
+@pytest.mark.parametrize('failure', ['future', 'private_timestamp', 'malformed_body', 'missing_file'])
+def test_cli_rejects_invalid_evidence_without_echoing_private_payload(tmp_path, failure):
+    import subprocess
+    import sys
+
+    marker = 'PRIVATE_SYNTHETIC_TIMESTAMP_MARKER'
+    path = tmp_path/'response.json'
+    body = response() if failure != 'malformed_body' else {'trades': {'SPY': [None]}, 'next_page_token': None}
+    path.write_text(json.dumps(body))
+    probe = {'start': START, 'end_exclusive': END, 'response_file': path.name,
+             'response_sha256': sha256(path), 'http_status': 200,
+             'observed_at': '2099-01-01T00:00:00Z' if failure == 'future' else
+                            marker if failure == 'private_timestamp' else '2023-06-06T00:00:00Z'}
+    meta = tmp_path/'manifest.json'
+    meta.write_text(json.dumps({'endpoint': 'https://data.alpaca.markets/v2/stocks/trades',
+                               'symbol': 'SPY', 'feed': 'sip', 'probes': [probe]}))
+    if failure == 'missing_file':
+        path.unlink()
+    before = meta.read_bytes()
+    result = subprocess.run([sys.executable, '-m', 'cash_cow.intraday.trade_audit', str(meta)],
+                            capture_output=True, text=True, timeout=10)
+    assert result.returncode == 2
+    assert json.loads(result.stdout) == {'status': 'review_required',
+                                         'issues': ['invalid_or_unreadable_probe_evidence']}
+    assert result.stderr == ''
+    assert marker not in result.stdout and str(tmp_path) not in result.stdout
+    assert meta.read_bytes() == before

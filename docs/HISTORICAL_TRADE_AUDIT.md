@@ -24,3 +24,10 @@ A successful audit only establishes consistency of the supplied snapshot, not ve
 The manifest records the stated feed; a hash does not independently authenticate the provider.
 The command performs no network calls, state changes, price reconstruction, validation exemptions or strategy evaluation.
 The paper runner and frozen historical validator do not import it.
+
+November 25 correction: a supplied observation time must not lie after the audit time.
+Previously a future-dated response manifest could pass; invalid timestamp parsing could also echo private values in a CLI traceback.
+Malformed, missing or future-dated evidence now returns exit 2 with a fixed sanitized issue label and no raw payload or path in the output.
+The library still raises validation errors for callers to handle; the command is the sanitized reporting boundary.
+Subprocess tests exercise the actual command for future times, invalid timestamp text, malformed trade rows and missing response files.
+This correction does not change successful historical counts, repair inputs or alter the paper runner.
