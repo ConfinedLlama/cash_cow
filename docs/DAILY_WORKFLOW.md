@@ -101,3 +101,13 @@ November 4 follow-up: idle sleep interrupted the first US session, which is reta
 On November 3: eight intraday variants have 236 historical pilot runs, with no 10% month in that pilot. Multi-year v4 is prepared, but no completed v4 pointer exists. The new paper runner uses a separately registered ORB30/VWAP strategy, USD 2,000 sleeve and IEX feed. Check actual process/account/journal status; initialization alone is not a completed session. Use `docs/DECISION_V3.md` for historical evidence and `docs/PAPER_RUNNER.md` for prospective operations. Never expose credentials.
 
 Schedule behavior reference: [official scheduled-task documentation](https://learn.chatgpt.com/docs/automations?surface=app).
+
+## Calendar-aware paper report
+
+For the frozen `paper_ai_v1` trial, add `--trial-calendar PATH` alongside `--observations` and `--coverage-state`.
+Use the independently fetched full twenty-session calendar described in `AI_PAPER_TRIAL.md` and the current Singapore report date.
+The reporter runs the read-only attendance audit and binds its state hash to the accounting coverage snapshot.
+It displays every elapsed scheduled session, including dates missing from both journal and export, and explicitly lists accounting closes that are unavailable.
+Holidays and future sessions are not invented as missing returns, and existing losses remain in the accounting results.
+This option rejects mismatched trial identities, changed/unverifiable state or event evidence, and unclosed/out-of-trial accounting dates.
+It does not fetch data, repair state, authorize trading or certify complete-month performance.

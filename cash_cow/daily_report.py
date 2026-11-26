@@ -166,7 +166,33 @@ def research_status(root: Path) -> list[str]:
     return lines
 
 
-def render_report(root: Path, day: date, performance: dict | None = None) -> str:
+def load_trial_coverage(calendar_path, state_path, performance, now=None):
+    """Join the frozen paper trial calendar without inventing accounting rows."""
+    from .paper.attendance import audit, calendar_sessions
+    now = now or datetime.now(SGT)
+    if (performance['mode'] != 'paper' or performance['strategy_id'] != 'paper_ai_v1_cost_stress'
+            or state_path.name != 'state.json' or not performance['coverage']['state_sha256']):
+        raise ValueError('Trial calendar requires matching paper_ai_v1 cost-stress state')
+    raw = calendar_path.read_bytes()
+    calendar = json.loads(raw)
+    expected = calendar_sessions(calendar, '2026-11-04', 20, now)
+    result = audit(state_path.parent, calendar, '2026-11-04', 20, now)
+    if (result['state_sha256'] != performance['coverage']['state_sha256']
+            or any(issue != 'elapsed_sessions_require_review' for issue in result['issues'])):
+        raise ValueError('Trial coverage evidence changed or is unverifiable; retry or reconcile')
+    exported = {row['session_date'] for row in performance['coverage']['sessions']}
+    elapsed = {day for day, _, closed in expected if closed <= now}
+    if not exported <= elapsed:
+        raise ValueError('Accounting export includes an unclosed or out-of-trial session')
+    return {'as_of': result['as_of'], 'calendar_sha256': hashlib.sha256(raw).hexdigest(),
+            'elapsed_sessions': result['elapsed_sessions'], 'planned_sessions': result['planned_sessions'],
+            'sessions': [{'date': row['date'], 'status': row['status'],
+                          'accounting_export': 'present' if row['date'] in exported else 'unavailable'}
+                         for row in result['sessions'] if row['date'] in elapsed],
+            'missing_accounting_dates': sorted(elapsed-exported)}
+
+
+def render_report(root: Path, day: date, performance: dict | None = None, trial: dict | None = None) -> str:
     commits = commits_for_day(root, day)
     lines = [f"# Daily report - {day.isoformat()} (Asia/Singapore)", "",
              f"Snapshot HEAD: `{git(root, 'rev-parse', 'HEAD')}`.", "",
@@ -179,6 +205,15 @@ def render_report(root: Path, day: date, performance: dict | None = None) -> str
     lines += ["", "The final report commit cannot contain its own hash.",
               "Its scope is documented below; the daily chat summary includes its hash and push verification.",
               "", "## Performance evidence", ""]
+    if trial is not None:
+        lines += [f"Frozen trial: {trial['elapsed_sessions']} elapsed of {trial['planned_sessions']} scheduled sessions.",
+                  f"Calendar audit as of: `{trial['as_of']}`; source SHA-256: `{trial['calendar_sha256']}`.", "",
+                  "| Trial session | Attendance | Accounting export |", "|---|---|---|"]
+        lines += [f"| {r['date']} | {r['status']} | {r['accounting_export']} |" for r in trial['sessions']]
+        missing = ', '.join(trial['missing_accounting_dates']) or 'none'
+        lines += ["", f"Elapsed sessions without an accounting close: {missing}.",
+                  "Missing accounting returns are unavailable, never assumed zero.",
+                  "Attendance does not certify broker reconciliation, market-data coverage or full-month performance.", ""]
     if performance is None:
         lines += ["No paper/live session telemetry was supplied.",
                   "Daily P&L, fills, slippage and drawdown are unavailable; historical results are not today's trading results."]
@@ -224,13 +259,17 @@ def main():
     parser.add_argument("--date", type=date.fromisoformat, default=datetime.now(SGT).date())
     parser.add_argument("--observations", type=Path, help="Private reconciled paper/live session JSON")
     parser.add_argument("--coverage-state", type=Path, help="Private matching state.json for paper cost-stress observations")
+    parser.add_argument('--trial-calendar', type=Path, help='Independent calendar for the frozen paper_ai_v1 twenty-session trial')
     args = parser.parse_args()
     if args.date > datetime.now(SGT).date():
         parser.error("Cannot generate future daily reports")
     if args.coverage_state and not args.observations:
         parser.error('--coverage-state requires --observations')
+    if args.trial_calendar and (not args.coverage_state or args.date != datetime.now(SGT).date()):
+        parser.error('--trial-calendar requires --coverage-state and the current Singapore report date')
     performance = load_performance(args.observations, args.date, args.coverage_state) if args.observations else None
-    report = render_report(ROOT, args.date, performance)
+    trial = load_trial_coverage(args.trial_calendar, args.coverage_state, performance) if args.trial_calendar else None
+    report = render_report(ROOT, args.date, performance, trial)
     target = ROOT / "reports/daily" / f"{args.date.isoformat()}.md"
     target.parent.mkdir(parents=True, exist_ok=True)
     with target.open("x") as stream:
