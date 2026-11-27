@@ -111,3 +111,7 @@ It displays every elapsed scheduled session, including dates missing from both j
 Holidays and future sessions are not invented as missing returns, and existing losses remain in the accounting results.
 This option rejects mismatched trial identities, changed/unverifiable state or event evidence, and unclosed/out-of-trial accounting dates.
 It does not fetch data, repair state, authorize trading or certify complete-month performance.
+
+Open and upcoming sessions appear separately with timezone-aware opening and closing boundaries.
+Their calendar status does not certify that the service is running or that any trade occurred.
+They receive no final accounting return and do not enter the elapsed-session denominator until the scheduled close, including early closes.

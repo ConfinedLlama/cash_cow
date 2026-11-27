@@ -189,6 +189,9 @@ def load_trial_coverage(calendar_path, state_path, performance, now=None):
             'sessions': [{'date': row['date'], 'status': row['status'],
                           'accounting_export': 'present' if row['date'] in exported else 'unavailable'}
                          for row in result['sessions'] if row['date'] in elapsed],
+            'pending_sessions': [{'date': day, 'calendar_status': 'scheduled' if now < opened else 'in_progress',
+                                  'open': opened.isoformat(), 'close': closed.isoformat()}
+                                 for day, opened, closed in expected if closed > now],
             'missing_accounting_dates': sorted(elapsed-exported)}
 
 
@@ -214,6 +217,15 @@ def render_report(root: Path, day: date, performance: dict | None = None, trial:
         lines += ["", f"Elapsed sessions without an accounting close: {missing}.",
                   "Missing accounting returns are unavailable, never assumed zero.",
                   "Attendance does not certify broker reconciliation, market-data coverage or full-month performance.", ""]
+        if trial.get('pending_sessions'):
+            lines += ["### Open and upcoming calendar sessions", "",
+                      "These are exchange-calendar states, not proof of a running service or observed trading.",
+                      "Unclosed sessions have no final return and are excluded from elapsed-session counts.", "",
+                      "| Trial session | Calendar status | Opens (UTC offset shown) | Closes (UTC offset shown) |",
+                      "|---|---|---|---|"]
+            lines += [f"| {r['date']} | {r['calendar_status']} | {r['open']} | {r['close']} |"
+                      for r in trial['pending_sessions']]
+            lines.append("")
     if performance is None:
         lines += ["No paper/live session telemetry was supplied.",
                   "Daily P&L, fills, slippage and drawdown are unavailable; historical results are not today's trading results."]

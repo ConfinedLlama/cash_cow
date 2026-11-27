@@ -63,3 +63,32 @@ def test_unmatched_or_unverifiable_sources_are_rejected(tmp_path, change):
         data=json.loads(c.read_text());data['sessions'].pop();c.write_text(json.dumps(data))
     with pytest.raises(ValueError):
         load_trial_coverage(c, s, performance, NOW)
+
+
+@pytest.mark.parametrize('hour,minute,status,elapsed', [
+    (14, 29, 'scheduled', 16), (14, 30, 'in_progress', 16),
+    (17, 59, 'in_progress', 16), (18, 0, None, 17),
+])
+def test_early_close_calendar_transition_is_not_trading_evidence(tmp_path, monkeypatch, hour, minute, status, elapsed):
+    import cash_cow.daily_report as module
+    c, s, performance = fixture(tmp_path)
+    now = datetime(2026, 11, 27, hour, minute, tzinfo=timezone.utc)
+    before = {p: p.read_bytes() for p in tmp_path.iterdir()}
+    trial = load_trial_coverage(c, s, performance, now)
+    rows = {r['date']: r for r in trial['pending_sessions']}
+    assert trial['elapsed_sessions'] == elapsed
+    assert len(rows) + elapsed == 20
+    if status:
+        assert rows['2026-11-27']['calendar_status'] == status
+        assert datetime.fromisoformat(rows['2026-11-27']['close']) == datetime(2026, 11, 27, 18, tzinfo=timezone.utc)
+        assert '2026-11-27' not in trial['missing_accounting_dates']
+    else:
+        assert '2026-11-27' not in rows
+        assert '2026-11-27' in trial['missing_accounting_dates']
+    assert rows['2026-11-30']['calendar_status'] == 'scheduled'
+    monkeypatch.setattr(module, 'commits_for_day', lambda *_: [])
+    monkeypatch.setattr(module, 'git', lambda *_: 'fixture')
+    report = render_report(tmp_path, date(2026, 11, 27), performance, trial)
+    assert 'not proof of a running service' in report
+    assert 'Observed net P&L: -10.00' in report
+    assert before == {p: p.read_bytes() for p in tmp_path.iterdir()}
